@@ -8,11 +8,7 @@ authors = [
     { name = "The BurstCube Team" },
 ]
 description = "Gamma-ray Data Tools: BurstCube Mission"
-# NOTE: gdt-fermi points this at a separate PYPI-README.rst; that file, along
-# with the full README.rst, is added in a later round of this plugin's
-# development. Until then this points at the top-level README.md so that the
-# package remains installable.
-readme = "README.md"
+readme = "PYPI-README.rst"
 license = "Apache-2.0"
 license-files = ["license.txt"]
 keywords = ['astronomy', 'gammaray', 'gamma-ray', 'burstcube']

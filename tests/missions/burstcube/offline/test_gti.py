@@ -68,3 +68,54 @@ def test_apply_to_reproduces_cl_style_cut_from_uf(tmp_path):
 
     assert trimmed.time_range[1] == pytest.approx(cutoff)
     assert trimmed.data.size[0] == 10
+
+
+def test_apply_to_drops_intervals_that_select_no_data(tmp_path):
+    """A real trend GTI spans the whole mission while one data file covers
+    minutes, so most of its intervals match nothing. Those must be dropped:
+    gdt-core's slice_time builds Gti.from_list([segment.time_range]) per
+    range, and an empty segment's time_range is None, which raises TypeError
+    from inside the primitive.
+    """
+    n = 20
+    time = 107629263.33 + (np.arange(n) + 1) * 0.256
+    path = tmp_path / 'cbd.fits'
+    make_cbd_fits(path, time=time, gti=[(time[0] - 0.256, time[-1])])
+    cbd = BurstCubeCbd.open(path)
+
+    # one interval covering real data, three far outside it
+    gti = Gti.from_list([(time[0] - 0.256, time[9]),
+                         (time[-1] + 1e6, time[-1] + 1e6 + 10),
+                         (time[-1] + 2e6, time[-1] + 2e6 + 10),
+                         (time[-1] + 3e6, time[-1] + 3e6 + 10)])
+    trimmed = apply_to(gti, cbd)
+    assert trimmed.data.size[0] == 10
+
+
+def test_apply_to_handles_several_disjoint_intervals(tmp_path):
+    """gdt-core's Phaii.slice_time accumulates a GTI by intersecting each
+    segment's range into a running total, which empties once two segments are
+    disjoint and then raises. apply_to must still return the union.
+    """
+    n = 40
+    time = 107629263.33 + (np.arange(n) + 1) * 0.256
+    path = tmp_path / 'cbd_multi.fits'
+    make_cbd_fits(path, time=time, gti=[(time[0] - 0.256, time[-1])])
+    cbd = BurstCubeCbd.open(path)
+
+    gti = Gti.from_list([(time[0] - 0.256, time[4]),
+                         (time[10] - 0.256, time[14]),
+                         (time[20] - 0.256, time[24])])
+    trimmed = apply_to(gti, cbd)
+    assert trimmed.data.size[0] == 15
+    assert trimmed.data.counts.sum() > 0
+
+
+def test_apply_to_raises_when_nothing_overlaps(tmp_path):
+    """No overlap at all is a user error worth naming, not an empty object."""
+    path = tmp_path / 'cbd_no_overlap.fits'
+    make_cbd_fits(path)
+    cbd = BurstCubeCbd.open(path)
+    far = cbd.time_range[1] + 1e6
+    with pytest.raises(ValueError, match='does not|No interval'):
+        apply_to(Gti.from_list([(far, far + 10)]), cbd)

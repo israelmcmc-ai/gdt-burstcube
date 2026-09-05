@@ -21,6 +21,8 @@ that gdt-core does not provide, plus :func:`apply_to` for cutting a
 a GTI -- e.g. to reproduce a CBD ``_cl`` file's cut starting from its ``_uf``
 counterpart and the matching ``trend/gti_*`` file.
 """
+import numpy as np
+
 from gdt.core.data_primitives import Gti
 from gdt.core.file import FitsFileContextManager
 
@@ -119,6 +121,16 @@ def apply_to(gti: Gti, data_obj):
     :class:`~gdt.core.tte.PhotonList` down to a GTI, e.g. to reproduce a
     ``_cl`` file's cut starting from its ``_uf`` counterpart.
 
+    Intervals that select no data are dropped before slicing. This matters
+    for every real trend GTI: those files span the whole mission (the SAA one
+    has 586 intervals over five months) while a single CBD or TTE file covers
+    minutes to hours, so most intervals match nothing. gdt-core's
+    ``slice_time`` builds ``Gti.from_list([segment.time_range])`` for each
+    requested range and an empty segment has a ``time_range`` of ``None``,
+    which raises ``TypeError`` from inside the primitive rather than
+    returning an empty result -- so passing a whole trend GTI through
+    unfiltered fails on essentially any real pairing.
+
     Args:
         gti (:class:`~gdt.core.data_primitives.Gti`): The GTI to apply
         data_obj (:class:`~gdt.core.phaii.Phaii` or :class:`~gdt.core.tte.PhotonList`):
@@ -127,5 +139,47 @@ def apply_to(gti: Gti, data_obj):
     Returns:
         (:class:`~gdt.core.phaii.Phaii` or :class:`~gdt.core.tte.PhotonList`):
         A new object of the same type as ``data_obj``, sliced to the GTI.
+
+    Raises:
+        ValueError: If no interval of ``gti`` overlaps the data at all, since
+            there is no meaningful empty object to return.
     """
-    return data_obj.slice_time(gti.as_list())
+    data = data_obj.data
+    if hasattr(data, 'tstart'):
+        # binned (Phaii): keep intervals that touch at least one bin. Testing
+        # against the overall time range is not enough -- BurstCube data is
+        # gappy, so an interval can sit inside the file's span and still
+        # contain no bins at all.
+        def selects_data(low, high):
+            return bool(np.any((data.tstop > low) & (data.tstart < high)))
+    else:
+        # unbinned (PhotonList): keep intervals containing at least one event
+        def selects_data(low, high):
+            return bool(np.any((data.times >= low) & (data.times <= high)))
+
+    overlapping = [(low, high) for low, high in gti.as_list()
+                   if selects_data(low, high)]
+
+    if not overlapping:
+        data_start, data_stop = data_obj.time_range
+        intervals = gti.as_list()
+        raise ValueError(
+            f'No interval of the GTI contains any data. The data spans '
+            f'{data_start} to {data_stop}; the GTI covers {intervals[0][0]} '
+            f'to {intervals[-1][1]} in {len(intervals)} intervals. Check that '
+            'the GTI and the data are for the same observation and detector.')
+
+    if len(overlapping) == 1:
+        return data_obj.slice_time(overlapping)
+
+    # Slice one interval at a time and recombine, rather than handing the
+    # whole list to slice_time. gdt-core's Phaii.slice_time accumulates a GTI
+    # by *intersecting* each sliced segment's own range into a running total
+    # (`gti = Gti.intersection(gti, seg_gti)`), which empties out as soon as
+    # two segments are disjoint and then raises TypeError on the empty
+    # result's `range`. That accumulated value is dead -- from_data is handed
+    # `gti=self.gti` instead -- but it still crashes on the way. Slicing a
+    # single interval per call runs that loop exactly once, so it never
+    # empties, and merge_time/merge recombines the pieces correctly.
+    pieces = [data_obj.slice_time([interval]) for interval in overlapping]
+    return type(data_obj).merge(pieces)

@@ -221,3 +221,32 @@ def test_slice_time_accepts_disjoint_ranges(tmp_path):
     expected = int((((times >= r1[0]) & (times <= r1[1])) |
                     ((times >= r2[0]) & (times <= r2[1]))).sum())
     assert tte.slice_time([r1, r2]).data.size == expected
+
+
+def test_slice_time_handles_disjoint_ranges_where_some_are_empty(tmp_path):
+    """TTE coverage is clustered, so a reasonable set of windows can leave
+    some containing no events. An empty segment has a time_range of None,
+    which Gti.from_list rejects, and EventList.merge reduces over each
+    segment's times and so fails on an empty one. Both must be handled.
+    """
+    times = 107629263.5 + np.concatenate([np.arange(50) * 0.01,
+                                          100.0 + np.arange(50) * 0.01])
+    path = tmp_path / 'tte_clustered.fits'
+    make_tte_fits(path, times=times, channels=np.full(len(times), 100))
+    tte = BurstCubeTte.open(path)
+
+    t0 = times[0]
+    ranges = [(t0, t0 + 1.0),          # populated
+              (t0 + 50.0, t0 + 51.0),  # empty
+              (t0 + 100.0, t0 + 101.0)]
+    expected = int(sum(((times >= a) & (times <= b)).sum() for a, b in ranges))
+    assert tte.slice_time(ranges).data.size == expected
+
+
+def test_slice_time_raises_when_no_range_contains_events(tmp_path):
+    path = tmp_path / 'tte_none.fits'
+    make_tte_fits(path)
+    tte = BurstCubeTte.open(path)
+    far = tte.time_range[1] + 1e6
+    with pytest.raises(ValueError, match='contain any events'):
+        tte.slice_time([(far, far + 10.0)])

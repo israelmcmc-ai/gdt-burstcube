@@ -83,11 +83,30 @@ class BurstCubeTte(PhotonList):
 
         segments = [self.data.time_slice(*r) for r in ordered]
 
-        gti = Gti.from_list(self.gti.as_list())
-        for segment in segments:
-            gti = Gti.intersection(gti, Gti.from_list([segment.time_range]))
+        # The result covers the original GTI intersected with the UNION of the
+        # kept ranges. Accumulating by repeated intersection instead -- as
+        # gdt-core's PhotonList.slice_time does -- empties the GTI as soon as
+        # two ranges are disjoint, and the next intersection then raises on
+        # the empty result. Segments that selected no events contribute
+        # nothing and have a time_range of None, so they are skipped rather
+        # than passed to Gti.from_list, which cannot take None.
+        # Ranges that contain no events are dropped. An empty EventList has a
+        # time_range of None, which Gti.from_list cannot take, and
+        # EventList.merge reduces over each segment's times and so fails on an
+        # empty one. Dropping them is also what a user means: TTE coverage is
+        # clustered, so a perfectly reasonable set of windows can leave some
+        # empty.
+        populated = [segment for segment in segments if segment.size > 0]
+        if not populated:
+            raise ValueError(
+                'None of the requested time ranges contain any events; the '
+                f'data spans {self.time_range[0]} to {self.time_range[1]}.')
 
-        data = EventList.merge(segments, sort=True, force_unique=False)
+        gti = Gti.intersection(
+            Gti.from_list(self.gti.as_list()),
+            Gti.from_list([segment.time_range for segment in populated]))
+
+        data = EventList.merge(populated, sort=True, force_unique=False)
 
         headers = self._build_headers(self.trigtime, *data.time_range,
                                       data.num_chans)
