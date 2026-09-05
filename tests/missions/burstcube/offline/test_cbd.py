@@ -188,16 +188,22 @@ def test_bin_edges_snap_only_float_noise_not_real_short_bins(tmp_path):
     path = tmp_path / 'cbd_noise.fits'
     make_cbd_fits(path, time=time)
 
-    d = BurstCubeCbd.open(path).data
+    cbd = BurstCubeCbd.open(path)
+    d = cbd.data
     resid = d.tstart[1:] - d.tstop[:-1]
 
     # float-noise boundaries are snapped to exactly contiguous
     assert np.all(resid[:3] == 0.0)
-    # the real 1 ms feature survives, unsnapped and at full size. The
-    # tolerance here must itself sit above the ULP noise floor (~1.5e-8 s)
-    # that this test is about, and well below the 1e-3 feature.
-    assert resid[3] == pytest.approx(-1e-3, abs=1e-7)
-    assert resid[3] != 0.0
+
+    # The real 1 ms short bin is NOT treated as noise. Its start would fall
+    # before the previous bin's end, so it is clamped to that end -- bins may
+    # not overlap, and gdt-core refuses to rebin them if they do. The feature
+    # survives as a shortened exposure and in the `blended` flag, rather than
+    # being absorbed into the snap.
+    assert resid[3] == 0.0
+    assert d.exposure[4] == pytest.approx(0.255, abs=1e-7)
+    assert d.exposure[3] == pytest.approx(TIMEDEL_CBD, abs=1e-7)
+    assert cbd.blended[4]
     assert np.all(d.exposure > 0)
 
 
@@ -233,3 +239,24 @@ def test_sumtot_present_in_cleaned_files(tmp_path):
     cbd = BurstCubeCbd.open(path)
     assert cbd.sumtot is not None
     assert np.array_equal(cbd.sumtot, cbd.data.counts.sum(axis=1))
+
+
+def test_rebin_works_when_short_bins_would_otherwise_overlap(tmp_path):
+    """Regression: bins short of TIMEDEL leave tstart[i] before tstop[i-1],
+    and gdt-core refuses to merge overlapping bins, so rebin_time raised
+    ValueError on every real CBD file. slice_time succeeded regardless, which
+    is why it went unnoticed until rebinning was exercised.
+    """
+    n = 16
+    time = 107629263.33 + (np.arange(n) + 1) * TIMEDEL_CBD
+    time[4:] -= 1e-3
+    time[9:] -= 1e-3
+    path = tmp_path / 'cbd_overlap.fits'
+    make_cbd_fits(path, time=time)
+
+    cbd = BurstCubeCbd.open(path)
+    assert np.all(cbd.data.tstart[1:] >= cbd.data.tstop[:-1])
+
+    rebinned = cbd.rebin_time(combine_by_factor, 2)
+    assert rebinned.data.num_times == n // 2
+    assert rebinned.data.counts.sum() == cbd.data.counts.sum()

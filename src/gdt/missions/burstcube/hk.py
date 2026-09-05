@@ -73,7 +73,7 @@ class BurstCubeDetectorHk(FitsFileContextManager):
         onboard trigger algorithm was enabled for a detector at each time.
 
         Args:
-            detector (int or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
+            detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
                 The detector, e.g. ``0`` or ``BurstCubeDetectors.CS0``. If
                 omitted, returns the full (`n`, 4) array for all detectors.
 
@@ -87,7 +87,7 @@ class BurstCubeDetectorHk(FitsFileContextManager):
         detector itself was enabled at each time.
 
         Args:
-            detector (int or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
+            detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
                 The detector. If omitted, returns the full (`n`, 4) array.
 
         Returns:
@@ -100,7 +100,7 @@ class BurstCubeDetectorHk(FitsFileContextManager):
         collection was enabled for a detector at each time.
 
         Args:
-            detector (int or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
+            detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
                 The detector. If omitted, returns the full (`n`, 4) array.
 
         Returns:
@@ -113,7 +113,7 @@ class BurstCubeDetectorHk(FitsFileContextManager):
         collection was enabled for a detector at each time.
 
         Args:
-            detector (int or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
+            detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
                 The detector. If omitted, returns the full (`n`, 4) array.
 
         Returns:
@@ -126,7 +126,7 @@ class BurstCubeDetectorHk(FitsFileContextManager):
         See archive caveat #7 for the mid-mission threshold change.
 
         Args:
-            detector (int or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
+            detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
                 The detector. If omitted, returns the full (`n`, 4) array.
 
         Returns:
@@ -139,7 +139,7 @@ class BurstCubeDetectorHk(FitsFileContextManager):
         See archive caveat #7 for the mid-mission threshold change.
 
         Args:
-            detector (int or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
+            detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
                 The detector. If omitted, returns the full (`n`, 4) array.
 
         Returns:
@@ -166,5 +166,11 @@ class BurstCubeDetectorHk(FitsFileContextManager):
         values = self.column(hdu_idx, column)
         if detector is None:
             return values
-        number = getattr(detector, 'number', detector)
+        if hasattr(detector, 'number'):
+            number = detector.number
+        elif isinstance(detector, str):
+            from .detectors import BurstCubeDetectors
+            number = BurstCubeDetectors.from_str(detector.upper()).number
+        else:
+            number = int(detector)
         return values[:, number]

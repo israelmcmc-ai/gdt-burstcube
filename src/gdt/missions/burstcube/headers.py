@@ -21,11 +21,13 @@ directly against real archive files (``bc240530cs0_3cbd_cl.fits.gz``,
 ``bc_csa_att.fits``), not just the mission documentation, since the two do not
 always agree (see the CBD/TTE ``STDGTI`` note below).
 """
+from contextlib import contextmanager
+
 from gdt.core.headers import FileHeaders, Header
 
 from .time import Time
 
-__all__ = ['AttitudeHeaders', 'CbdHeaders', 'CbdUnfilteredHeaders', 'DetectorHkHeaders', 'GtiHeaders',
+__all__ = ['AttitudeHeaders', 'BurstCubeFileHeaders', 'CbdHeaders', 'CbdUnfilteredHeaders', 'DetectorHkHeaders', 'GtiHeaders',
           'OrbitHeaders', 'RspHeaders', 'TteHeaders']
 
 # mission definitions
@@ -75,18 +77,54 @@ _bc_time_cards = [_mjdrefi_card, _mjdreff_card, _timeref_card, _tassign_card,
                   _timesys_card, _timeunit_card]
 
 
+#: Whether setting TSTART/TSTOP should also refresh DATE-OBS/DATE-END. Off
+#: while headers are being populated from a file on disk -- see
+#: :func:`_dates_unsynced`.
+_SYNC_DATES = True
+
+
+@contextmanager
+def _dates_unsynced():
+    """Suspend the ``TSTART``/``TSTOP`` -> ``DATE-OBS``/``DATE-END`` sync.
+
+    Reading a file must not silently rewrite its own header values. The
+    templates list ``DATE-OBS``/``DATE-END`` before ``TSTART``/``TSTOP``, so
+    without this the copied date would be overwritten moments later by one
+    recomputed from the timing keywords. That is a real divergence, not a
+    cosmetic one: in ``bc240530cs0_tte_uf.evt.gz`` all three extensions carry
+    the same DATE-OBS/DATE-END on disk, but ``STDGTI`` has a different (and
+    saner) TSTART/TSTOP than ``EVENTS``, so resyncing while loading left the
+    three extensions reporting three different observation times -- and
+    writing the object back out would have persisted values the archive never
+    contained.
+
+    The sync itself is still wanted when *we* set a new time range, e.g. in
+    ``_build_headers`` after a slice or rebin.
+    """
+    global _SYNC_DATES
+    previous = _SYNC_DATES
+    _SYNC_DATES = False
+    try:
+        yield
+    finally:
+        _SYNC_DATES = previous
+
+
 class BurstCubeHeader(Header):
     """A :class:`~gdt.core.headers.Header` that keeps ``DATE-OBS``/``DATE-END``
-    in sync with ``TSTART``/``TSTOP`` (interpreted as BurstCube MET). Per
-    archive caveat #4, ``TSTART``/``TSTOP`` are sometimes written as strings
-    with ``TSTOP < TSTART`` in TTE files; this sync is best-effort and quietly
-    does nothing if the value cannot be interpreted as a MET, rather than
-    raising, so that opening a file with malformed timing keywords does not
-    crash.
+    in sync with ``TSTART``/``TSTOP`` (interpreted as BurstCube MET) whenever a
+    new time range is set on it.
+
+    The sync is suspended while headers are populated from a file, so that
+    reading never alters what the archive wrote; see :func:`_dates_unsynced`.
+    Per archive caveat #4, ``TSTART``/``TSTOP`` are sometimes written as
+    strings with ``TSTOP < TSTART`` in TTE files, so the sync is best-effort
+    and quietly does nothing if the value cannot be interpreted as a MET,
+    rather than raising.
     """
 
     def __setitem__(self, key, val):
-        if not isinstance(key, tuple) and not isinstance(val, tuple):
+        if _SYNC_DATES and not isinstance(key, tuple) and not isinstance(val, tuple):
             date_key = {'TSTART': 'DATE-OBS', 'TSTOP': 'DATE-END'}.get(key.upper())
             if date_key is not None and date_key in self:
                 try:
@@ -95,6 +133,30 @@ class BurstCubeHeader(Header):
                     pass
 
         super().__setitem__(key, val)
+
+
+class BurstCubeFileHeaders(FileHeaders):
+    """A :class:`~gdt.core.headers.FileHeaders` that preserves the date
+    keywords a file actually carries.
+
+    Populating from disk happens inside :func:`_dates_unsynced`, so a header
+    read back from a file matches the file, byte for byte, even where the
+    archive's own values are internally inconsistent.
+    """
+
+    @classmethod
+    def from_headers(cls, headers):
+        """Build from a list of headers read from a file, leaving their
+        ``DATE-OBS``/``DATE-END`` values untouched.
+
+        Args:
+            headers (list of :class:`astropy.io.fits.Header`): The headers
+
+        Returns:
+            (:class:`BurstCubeFileHeaders`)
+        """
+        with _dates_unsynced():
+            return super().from_headers(headers)
 
 
 class DataPrimaryHeader(BurstCubeHeader):
@@ -332,13 +394,13 @@ class GtiTrendDataHeader(BurstCubeHeader):
 
 #-------------------------------------
 
-class CbdHeaders(FileHeaders):
+class CbdHeaders(BurstCubeFileHeaders):
     """FITS headers for a CBD file whose ``STDGTI`` uses the 2-column
     standard schema (in practice, the cleaned ``_cl`` files)."""
     _header_templates = [DataPrimaryHeader(), CbdDataHeader(), CbdGtiHeader()]
 
 
-class CbdUnfilteredHeaders(FileHeaders):
+class CbdUnfilteredHeaders(BurstCubeFileHeaders):
     """FITS headers for a CBD file whose ``STDGTI`` uses the 6-column schema
     shared with TTE (in practice, the unfiltered ``_uf`` files).
 
@@ -348,22 +410,22 @@ class CbdUnfilteredHeaders(FileHeaders):
     _header_templates = [DataPrimaryHeader(), CbdDataHeader(), TteGtiHeader()]
 
 
-class TteHeaders(FileHeaders):
+class TteHeaders(BurstCubeFileHeaders):
     """FITS headers for TTE (time-tagged event) files."""
     _header_templates = [DataPrimaryHeader(), EventsHeader(), TteGtiHeader()]
 
 
-class OrbitHeaders(FileHeaders):
+class OrbitHeaders(BurstCubeFileHeaders):
     """FITS headers for the orbit/ephemeris file (``auxil/bcYYMMDD.hk.gz``)."""
     _header_templates = [AuxPrimaryHeader(), OrbitDataHeader()]
 
 
-class AttitudeHeaders(FileHeaders):
+class AttitudeHeaders(BurstCubeFileHeaders):
     """FITS headers for the attitude file (``trend/attitude/bc_csa_att.fits``)."""
     _header_templates = [AttitudePrimaryHeader(), AttitudeDataHeader()]
 
 
-class DetectorHkHeaders(FileHeaders):
+class DetectorHkHeaders(BurstCubeFileHeaders):
     """FITS headers for the detector housekeeping file
     (``auxil/bcYYMMDDcsa.hk.gz``).
     """
@@ -371,7 +433,7 @@ class DetectorHkHeaders(FileHeaders):
                          DetectorHk2Header()]
 
 
-class GtiHeaders(FileHeaders):
+class GtiHeaders(BurstCubeFileHeaders):
     """FITS headers for a standalone trend GTI file (``trend/gti_*/*.gti``)."""
     _header_templates = [GtiTrendPrimaryHeader(), GtiTrendDataHeader()]
 
@@ -444,7 +506,7 @@ class RspSpecrespHeader(BurstCubeHeader):
                _date_card]
 
 
-class RspHeaders(FileHeaders):
+class RspHeaders(BurstCubeFileHeaders):
     """FITS headers for a single-DRM BurstCube response file (``.rsp``)."""
     _header_templates = [RspPrimaryHeader(), RspEboundsHeader(),
                          RspSpecrespHeader()]

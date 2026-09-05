@@ -135,4 +135,21 @@ def test_get_all_returns_partial_results_for_a_day_with_no_tte(monkeypatch):
 
     assert result['tte'] == [None]
     assert result['cbd_cl'] != [None]
+
+
+def test_trend_finder_is_ready_to_download_without_an_explicit_cd(monkeypatch):
+    """Unlike BurstCubeObsFinder, BurstCubeTrendFinder has no per-instance
+    navigation argument, so a bare `BurstCubeTrendFinder()` must be able to
+    download immediately -- a user should not have to call a no-op `cd()`
+    first just to satisfy BaseFinder's internal state, and this must not
+    require a live directory listing to do so (this test has no network
+    access at all).
+    """
+    finder = BurstCubeTrendFinder()
+    requested = []
+    monkeypatch.setattr(finder._protocol, 'download',
+                        lambda file, dest, verbose: requested.append(file) or Path(dest) / file)
+
+    finder.get_attitude('/tmp/out', verbose=False)
+    assert requested == ['attitude/bc_csa_att.fits']
     assert result['orbit'] is not None

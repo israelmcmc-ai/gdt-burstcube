@@ -51,6 +51,18 @@ def test_enable_flags_accept_detector_enum(tmp_path):
                                   hk.det_enabled(2))
 
 
+def test_enable_flags_and_thresholds_accept_detector_name_string(tmp_path):
+    """A plain detector name string (e.g. 'CS0', as a user would naturally
+    type) must work the same as the enum member or the bare int -- not just
+    be documented as accepted.
+    """
+    path = tmp_path / 'hk.fits'
+    make_hk_fits(path)
+    hk = BurstCubeDetectorHk.open(path)
+    np.testing.assert_array_equal(hk.det_enabled('CS2'), hk.det_enabled(2))
+    np.testing.assert_array_equal(hk.peak_threshold('cs1'), hk.peak_threshold(1))
+
+
 def test_thresholds_from_hk2(tmp_path):
     path = tmp_path / 'hk.fits'
     make_hk_fits(path)

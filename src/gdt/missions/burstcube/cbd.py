@@ -25,6 +25,8 @@ Two critical things this reader gets right that a naive port would not:
   already rebins/slices each contiguous run separately, so a gap is never
   bridged or filled.
 """
+import warnings
+
 import numpy as np
 import astropy.io.fits as fits
 
@@ -173,7 +175,29 @@ class BurstCubeCbd(Phaii):
         # rounding.
         close = np.isclose(tstart[1:], tstop[:-1], atol=_SNAP_TOL, rtol=0.0)
         tstart[1:][close] = tstop[:-1][close]
+
+        # The 1 ms short bins leave tstart[i] genuinely *before* tstop[i-1],
+        # so consecutive bins overlap by a millisecond. A counting bin cannot
+        # overlap its predecessor, and gdt-core refuses to merge overlapping
+        # bins outright -- rebin_time raises ValueError on every real CBD file
+        # (53 overlaps in one day of CS0 _cl, 432 in _uf) while slice_time
+        # happens to succeed, so the failure only shows up on rebinning.
+        #
+        # Clamp the start to the previous stop. Those bins then carry a
+        # 0.255 s exposure rather than the nominal TIMEDEL, which is the
+        # honest reading: the packet arrived a millisecond early, and the bin
+        # covers only the time since the previous one ended. Nothing is
+        # hidden -- the `blended` flag below still marks every one of them.
+        np.maximum(tstart[1:], tstop[:-1], out=tstart[1:])
+
         exposure = tstop - tstart
+        if np.any(exposure <= 0.0):
+            warnings.warn(
+                f'{np.sum(exposure <= 0.0)} CBD bins have a non-positive '
+                'exposure after clamping overlaps, meaning consecutive TIME '
+                'values are not increasing by less than TIMEDEL. The bin '
+                'edges for those rows should not be trusted.',
+                RuntimeWarning, stacklevel=2)
 
         ebounds = caldb.ebounds(detector, 16)
         data = TimeEnergyBins(obj.column(cbd_idx, 'COUNTS'), tstart, tstop,

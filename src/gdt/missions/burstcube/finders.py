@@ -247,8 +247,28 @@ class BurstCubeTrendFinder(_BurstCubeFinderMixin):
     (``trend/attitude``, ``trend/gti_binning``, ``trend/gti_poscnt``,
     ``trend/gti_saa``, ``trend/timeline``), which are not organized by
     observation day.
+
+    Unlike :class:`BurstCubeObsFinder`, there is no per-instance navigation
+    parameter to pass (the trend directory is a single fixed location), so
+    this finder is ready to download from immediately on construction --
+    no separate, argument-less ``cd()`` call is needed first. As the module
+    docstring notes, BurstCube filenames are fully deterministic, so (per
+    :class:`_BurstCubeFinderMixin`) this never needs a real directory
+    listing to know what exists; the fixed trend path is set directly
+    rather than through :meth:`~gdt.core.heasarc.BaseFinder.cd`, which
+    would otherwise perform one.
+
+    Parameters:
+        protocol (str, optional): The connection protocol. Default is HTTPS.
     """
     _root = 'burstcube/data/trend'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self._args is None:
+            self._args = ()
+            self._cwd = self._construct_path()
+            self._protocol._cd(self._cwd)
 
     def get_attitude(self, download_dir, **kwargs):
         """Download the attitude file (3 rows, whole mission).
