@@ -18,6 +18,26 @@ caveats). For every other time, a user who wants to convert a sky position
 into BurstCube azimuth/zenith, or vice versa, must supply their own attitude
 quaternion. :meth:`BurstCubeFrame.from_quaternion` is the documented path for
 doing so.
+
+Quaternion component order
+---------------------------
+``trend/attitude/bc_csa_att.fits`` stores each attitude quaternion as a
+4-element ``QPARAM`` column, and separately gives the resulting spacecraft
+boresight pointing (RA, Dec, roll) in a ``POINTING`` column, which lets the
+component order be checked empirically rather than assumed. Its first row is
+``QPARAM = [0.0844, 0.6314, 0.6416, 0.4273]`` and
+``POINTING = [48.723068, 10.861862, 333.95041]``. Treating ``QPARAM`` as
+**scalar-last** (i.e. passing it to :class:`~gdt.core.coords.Quaternion` with
+the default ``scalar_first=False``, so ``x=0.0844, y=0.6314, z=0.6416,
+w=0.4273``) and rotating the BurstCube frame's boresight (``az=0, zenith=0``)
+into ICRS reproduces ``POINTING``'s RA/Dec to 6 decimal places. Treating it as
+scalar-first instead reproduces neither the RA nor the Dec. **``QPARAM`` is
+therefore scalar-last**, matching the :class:`~gdt.core.coords.Quaternion`
+default, so callers passing an archive ``QPARAM`` row to
+:meth:`BurstCubeFrame.from_quaternion` should leave ``scalar_first=False``.
+This is only established for the frame transform itself; it says nothing
+about a reader for the attitude file, which is added in a later version of
+this plugin.
 """
 from typing import Optional, Union
 
@@ -45,9 +65,8 @@ class BurstCubeFrame(SpacecraftFrame):
 
         >>> from astropy.time import Time
         >>> from gdt.missions.burstcube.frame import BurstCubeFrame
-        >>> quat = [0.0844, 0.6314, 0.6416, 0.4273]
-        >>> frame = BurstCubeFrame.from_quaternion(quat, Time('2024-06-29T16:53:28'),
-        ...                                        scalar_first=True)
+        >>> quat = [0.0844, 0.6314, 0.6416, 0.4273]  # scalar-last (x, y, z, w)
+        >>> frame = BurstCubeFrame.from_quaternion(quat, Time('2024-06-29T16:53:28'))
     """
     @classmethod
     def from_quaternion(cls, quaternion: Union[Quaternion, list, tuple],
