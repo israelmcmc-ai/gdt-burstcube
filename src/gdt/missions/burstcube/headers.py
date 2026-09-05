@@ -26,7 +26,7 @@ from gdt.core.headers import FileHeaders, Header
 from .time import Time
 
 __all__ = ['AttitudeHeaders', 'CbdHeaders', 'CbdUnfilteredHeaders', 'DetectorHkHeaders', 'GtiHeaders',
-          'OrbitHeaders', 'TteHeaders']
+          'OrbitHeaders', 'RspHeaders', 'TteHeaders']
 
 # mission definitions
 _telescope = 'BURSTCUBE'
@@ -374,3 +374,77 @@ class DetectorHkHeaders(FileHeaders):
 class GtiHeaders(FileHeaders):
     """FITS headers for a standalone trend GTI file (``trend/gti_*/*.gti``)."""
     _header_templates = [GtiTrendPrimaryHeader(), GtiTrendDataHeader()]
+
+
+# ------------------------------------------------------------------------
+# Response (.rsp) headers. These use a different keyword vocabulary from
+# the science-data products above (CALDB CCLS0001-style boilerplate rather
+# than OBS_ID/PROCVER/etc.), so they get their own small set of cards.
+
+_filter_card = ('FILTER', 'NONE', 'Filter')
+_ordering_card = ('ORDERING', 'RING', 'Pixel ordering scheme, either RING or NESTED')
+_pixel_card = ('PIXEL', 0, 'Pixel number for HEAPIX representation')
+_chantype_card = ('CHANTYPE', 'PHA', 'PHA or PI channel')
+_detchans_card = ('DETCHANS', 64, 'Detector channel')
+
+# the CALDB "boilerplate" block (CCLS0001 etc.) common to both extensions
+_rsp_caldb_cards = [
+    ('CCLS0001', 'CPF', 'Dataset is Basic Calibration File'),
+    ('CDTP0001', 'DATA', 'Calibration file contains data'),
+    ('CVSD0001', '2020-01-01', 'UTC date when calibration should first be used'),
+    ('CVST0001', '00:01:00', 'UTC time when calibration should first be used'),
+    ('CBD10001', 'DATAMODE(EVENT,CBD,ATD)', 'Applicable modes'),
+    ('CBD20001', '', 'Pixel number for HEAPIX representation'),
+    ('CBD30001', '', 'Distance from optical axis'),
+    ('CBD40001', '', 'Azimuthal angle'),
+    _hduclass_card, ('HDUCLAS1', 'RESPONSE', 'hduclass1'),
+    ('HDUVERS', '1.2.0', 'Version of format (OGIP memo OGIP-92-007)'),
+    ('HDUVERS1', '1.2.0', 'Obsolete included for back compatibility'),
+]
+
+
+class RspPrimaryHeader(BurstCubeHeader):
+    """PRIMARY header for a ``.rsp`` file. Much sparser than the science-data
+    PRIMARY headers: no ``OBS_ID``, no ``DATAMODE``, no ``DATE-OBS``/``DATE-END``.
+    """
+    name = 'PRIMARY'
+    keywords = [_telescope_card, _instrument_card, _origin_card, _date_card,
+               Header.creator()]
+
+
+class RspEboundsHeader(BurstCubeHeader):
+    """Header for the ``EBOUNDS`` extension of a ``.rsp`` file: the (older,
+    rounded, detector-independent) 64-channel energy grid the response
+    itself was computed on -- see :meth:`~gdt.missions.burstcube.response.BurstCubeRsp.to_cbd`
+    for why this must not be confused with CALDB's own ``eb16``/``eb64``.
+    """
+    name = 'EBOUNDS'
+    keywords = [_extname_card, _chantype_card, _detchans_card,
+               _telescope_card, _instrument_card, _filter_card,
+               _ordering_card, _pixel_card, ('CCNM0001', 'EBOUNDS',
+               'Type of calibration data')] + _rsp_caldb_cards + [
+               ('HDUCLAS2', 'EBOUNDS', 'hduclas2'),
+               ('CDES0001', '', 'Description keyword')] + [_origin_card,
+               _date_card]
+
+
+class RspSpecrespHeader(BurstCubeHeader):
+    """Header for the ``SPECRESP MATRIX`` extension of a ``.rsp`` file: the
+    response matrix itself, for one HEALPix pixel (``PIXEL``) of one
+    detector (``INSTRUME``).
+    """
+    name = 'SPECRESP MATRIX'
+    keywords = [_extname_card, _chantype_card, _detchans_card,
+               _telescope_card, _instrument_card, _filter_card,
+               _ordering_card, _pixel_card, ('CCNM0001', 'MATRIX',
+               'Type of calibration data')] + _rsp_caldb_cards + [
+               ('HDUCLAS2', 'RSP_MATRIX', 'hduclas2'),
+               ('HDUCLAS3', 'FULL', 'hduclas3'),
+               ('CDES0001', '', 'Description keyword')] + [_origin_card,
+               _date_card]
+
+
+class RspHeaders(FileHeaders):
+    """FITS headers for a single-DRM BurstCube response file (``.rsp``)."""
+    _header_templates = [RspPrimaryHeader(), RspEboundsHeader(),
+                         RspSpecrespHeader()]

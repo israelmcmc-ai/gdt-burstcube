@@ -1,0 +1,17 @@
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/obs/2024_05/240530/monitor/bc240530cs0_3cbd_cl.fits.gz
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/obs/2024_05/240530/monitor/bc240530cs0_3cbd_uf.fits.gz
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/obs/2024_05/240530/events/bc240530cs0_tte_uf.evt.gz
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/obs/2024_05/240530/auxil/bc240530.hk.gz
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/obs/2024_05/240530/auxil/bc240530csa.hk.gz
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/trend/attitude/bc_csa_att.fits
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/trend/gti_saa/bc_csa_saa_in_cl.gti
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/trend/gti_binning/bc_cs0_bin0_256.gti
+https://heasarc.gsfc.nasa.gov/FTP/burstcube/data/trend/timeline/20250606_timeline_final.csv
+https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/cs0/th0_90/bccs0_px0000t003p045_20240417v211.rsp.gz
+https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/cs1/th0_90/bccs1_px0000t003p045_20240417v211.rsp.gz
+https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/cs2/th0_90/bccs2_px0000t003p045_20240417v211.rsp.gz
+https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/cs3/th0_90/bccs3_px0000t003p045_20240417v211.rsp.gz
+https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/cs0/th0_90/bccs0_px0001t003p135_20240417v211.rsp.gz
+https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/cs1/th0_90/bccs1_px0001t003p135_20240417v211.rsp.gz
+https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/cs2/th0_90/bccs2_px0001t003p135_20240417v211.rsp.gz
+https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/cs3/th0_90/bccs3_px0001t003p135_20240417v211.rsp.gz
