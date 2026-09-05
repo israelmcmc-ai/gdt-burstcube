@@ -135,6 +135,7 @@ def test_get_all_returns_partial_results_for_a_day_with_no_tte(monkeypatch):
 
     assert result['tte'] == [None]
     assert result['cbd_cl'] != [None]
+    assert result['orbit'] is not None
 
 
 def test_trend_finder_is_ready_to_download_without_an_explicit_cd(monkeypatch):
@@ -152,4 +153,3 @@ def test_trend_finder_is_ready_to_download_without_an_explicit_cd(monkeypatch):
 
     finder.get_attitude('/tmp/out', verbose=False)
     assert requested == ['attitude/bc_csa_att.fits']
-    assert result['orbit'] is not None
