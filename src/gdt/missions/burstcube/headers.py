@@ -25,7 +25,7 @@ from gdt.core.headers import FileHeaders, Header
 
 from .time import Time
 
-__all__ = ['AttitudeHeaders', 'CbdHeaders', 'DetectorHkHeaders', 'GtiHeaders',
+__all__ = ['AttitudeHeaders', 'CbdHeaders', 'CbdUnfilteredHeaders', 'DetectorHkHeaders', 'GtiHeaders',
           'OrbitHeaders', 'TteHeaders']
 
 # mission definitions
@@ -148,27 +148,21 @@ class CbdDataHeader(BurstCubeHeader):
 
 
 class CbdGtiHeader(BurstCubeHeader):
-    """Header for the ``STDGTI`` extension of a *cleaned* (``_cl``) CBD file.
-    Columns are ``START``/``STOP`` only.
+    """Header for the ``STDGTI`` extension of a *cleaned* (``_cl``) CBD file:
+    the 2-column ``START``/``STOP`` OGIP standard form, carrying
+    ``HDUCLAS2='STANDARD'``, ``HDUVERS`` and ``TIMEZERO``.
 
     Note:
-        This is a *different* schema from :class:`TteGtiHeader`: this
-        ``STDGTI`` carries ``HDUCLAS2='STANDARD'``, ``HDUVERS``, and
-        ``TIMEZERO``, none of which :class:`TteGtiHeader` has.
-
-    Warning:
-        This is a contradiction with the SPEC this plugin was built from,
-        confirmed against real sample files, not merely a docstring
-        assumption: the SPEC states that CBD ``STDGTI`` always has this
-        2-column ``START``/``STOP`` schema. In fact only the ``_cl`` variant
-        does; the *unfiltered* ``_uf`` CBD ``STDGTI`` was found to have the
-        same 6-column schema (``START``, ``STOP``,
-        ``START_ORIGINAL_TIME``, ...) and the same header (no ``HDUCLAS2``,
-        ``HDUVERS``, or ``TIMEZERO``) as :class:`TteGtiHeader`, in
-        ``bc240530cs0_3cbd_uf.fits.gz``. A reader for CBD files (added in a
-        later version of this plugin) must check the actual ``STDGTI``
-        column names/header rather than assuming one schema based on
-        ``_uf``/``_cl``.
+        The two CBD variants do not share a ``STDGTI`` schema. Unfiltered
+        (``_uf``) files instead carry the 6-column form used by TTE
+        (``START``, ``STOP``, ``START_ORIGINAL_TIME``,
+        ``START_TIME_SYST_ERROR``, ``STOP_ORIGINAL_TIME``,
+        ``STOP_TIME_SYST_ERROR``) with ``HDUCLAS1='GTI'`` and none of the
+        three keywords above -- see :class:`TteGtiHeader`. Because nothing in
+        the files guarantees this correlation holds for every observation,
+        :meth:`~gdt.missions.burstcube.cbd.BurstCubeCbd.open` selects between
+        the two by inspecting the extension itself rather than by the
+        ``_uf``/``_cl`` filename.
     """
     name = 'STDGTI'
     keywords = [_extname_card, _hduclass_card,
@@ -339,8 +333,19 @@ class GtiTrendDataHeader(BurstCubeHeader):
 #-------------------------------------
 
 class CbdHeaders(FileHeaders):
-    """FITS headers for CBD (continuous binned data) files."""
+    """FITS headers for a CBD file whose ``STDGTI`` uses the 2-column
+    standard schema (in practice, the cleaned ``_cl`` files)."""
     _header_templates = [DataPrimaryHeader(), CbdDataHeader(), CbdGtiHeader()]
+
+
+class CbdUnfilteredHeaders(FileHeaders):
+    """FITS headers for a CBD file whose ``STDGTI`` uses the 6-column schema
+    shared with TTE (in practice, the unfiltered ``_uf`` files).
+
+    Identical to :class:`CbdHeaders` apart from the GTI extension. See the
+    note on :class:`CbdGtiHeader`.
+    """
+    _header_templates = [DataPrimaryHeader(), CbdDataHeader(), TteGtiHeader()]
 
 
 class TteHeaders(FileHeaders):

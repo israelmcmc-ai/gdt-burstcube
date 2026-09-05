@@ -19,7 +19,6 @@ be caught rather than merely re-asserting them.
 """
 import numpy as np
 import pytest
-from astropy.io import fits
 
 from gdt.missions.burstcube.detectors import BurstCubeDetectors, _alignment_matrix
 
