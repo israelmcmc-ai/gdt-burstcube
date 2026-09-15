@@ -8,10 +8,6 @@ mission: continuous binned data (CBD), time-tagged events (TTE), the
 detector response grid, orbit/attitude, detector housekeeping, the mission
 timeline, and the ``burcbmastr`` observation catalog.
 
-The full documentation can be found `here <https://astro-gdt.readthedocs.io/projects/astro-gdt-burstcube/en/latest/>`_.
-
-This software is not subject to EAR.
-
 Normal Installation
 --------------------
 
@@ -43,7 +39,7 @@ Quickstart
    cbd = BurstCubeCbd.open(paths[0])
    lc = cbd.to_lightcurve()
 
-See the `Jupyter notebooks <https://astro-gdt.readthedocs.io/projects/astro-gdt-burstcube/en/latest/notebooks.html>`_
+See the Jupyter notebooks (inside docs/notebooks)
 for three complete, executed worked examples against the live archive: data
 types and binning, detector response, and ancillary data (orbit, attitude,
 GTI/SAA, housekeeping, timeline, catalog).
@@ -57,13 +53,12 @@ alone.
 Caveats
 ================
 
-BurstCube is a young CubeSat mission and its public archive has real, known
+BurstCube public archive has some
 rough edges. This toolkit works around what it safely can and documents the
-rest here rather than hiding it. This section covers the issues most likely
-to affect analysis; it is not exhaustive -- for the complete, authoritative
-list see the official
+rest here. This section covers the issues most likely
+to affect analysis. It is not exhaustive, see the official caveats list
 `BurstCube Archive Caveats <https://heasarc.gsfc.nasa.gov/docs/burstcube/archive/burstcube_archive_caveats.pdf>`_
-document (2025-07-22), which every caveat below is drawn from.
+document (2025-07-22).
 
 Response EBOUNDS mismatch
 --------------------------
@@ -87,15 +82,6 @@ energies entirely. If you fold a spectrum through a 16-channel response and
 report channel energies, make sure you are reporting CALDB's, not the
 ``.rsp`` file's own.
 
-CBD timestamps are bin ends
------------------------------
-
-Every CBD file has ``TIMEPIXR=1``: the single ``TIME`` column recorded for
-each bin is the bin's **end**, not its start. This reader (``BurstCubeCbd``)
-builds bin edges as ``[TIME - TIMEDEL, TIME]`` accordingly, but any code that
-reads the raw FITS column directly and assumes GBM-style bin-start
-timestamps will silently shift every light curve by one bin width (0.256 s).
-
 Attitude is unavailable for most of the mission
 --------------------------------------------------
 
@@ -115,7 +101,7 @@ silently assuming an orientation.
 TTE header keywords are broken in at least one real file
 -------------------------------------------------------------
 
-At least one real TTE file has an ``EVENTS`` extension whose own
+at has an ``EVENTS`` extension whose own
 ``TSTART``/``TSTOP`` header keywords cannot be trusted: they are stored as
 **strings** rather than numbers, ``TSTOP`` is less than ``TSTART``, and the
 derived ``EXPOSURE`` is negative. ``BurstCubeTte`` ignores these keywords
@@ -170,35 +156,12 @@ offset is a clean constant, not a drift.
 *Which one is authoritative.* The MET is. The epoch above reproduces
 ``DATE-OBS`` and ``DATE-END`` to the millisecond in the CBD (both ``_uf``
 and ``_cl``) and orbit files, and the ``burcbmastr`` catalog's own UTC
-strings agree with it too. The FITS products are self-consistent; this CSV
-is the outlier.
-
-*Why it matters.* 37 s is long compared with anything you would study in
-this data -- a GRB, a 100-second TTE collection window, or the 20.2 s and
-43.5 s anomalous-threshold windows in caveat #7. Anyone correlating timeline
-events against CBD or TTE using the readable UTC column will misplace every
-instrument on/off boundary, GPS reset and threshold change by 37 s, in the
-direction that makes them look *earlier* than they were. Since this is the
-one archive file a person naturally reads by eye, it is an easy trap.
+strings agree with it too. The FITS products are self-consistent; *this CSV
+is the outlier*.
 
 ``BurstCubeTimeline`` therefore parses the MET column and converts it with
 ``BurstCubeSecTime``. The CSV's own string is exposed unconverted as
 ``utc_as_written`` for provenance only -- **do not use it for analysis.**
-
-Data gaps are frequent
--------------------------
-
-The instrument was off or unstable often enough that both CBD and TTE data
-have real gaps ranging from seconds to tens of minutes, even within a single
-observation day, and entire observation days are missing from the archive
-without a predictable pattern (day directories are not contiguous). This
-toolkit reports these gaps plainly (e.g. via each contiguous-segment
-boundary, or the ``blended``/GTI-derived gap information exposed by
-``BurstCubeCbd`` and ``gdt.missions.burstcube.gti.complement()``) rather
-than bridging, interpolating, or filling them. We do not speculate about the
-cause of any individual gap; see the official caveats document for what is
-and is not understood about specific gap-producing events (GPS reboots,
-threshold changes, and known flight-software issues).
 
 ----
 
@@ -240,36 +203,6 @@ This should result in git-devel having the following directory structure::
 and both gdt-core and gdt-burstcube installed in the virtual environment named
 venv.
 
-Writing Extensions using Namespace Packaging
------------------------------------------------
-Gamma-ray Data Tools encourages missions to write extensions using namespace
-packages. Please use our `Fermi extension <https://github.com/USRA-STI/gdt-fermi>`_
-and this BurstCube extension as examples of how we expect other missions to
-contribute extensions to the Gamma-ray Data Tools.
-
-The extension package should contain a directory 'gdt' with a subdirectory
-'missions' which will hold the extension code in a package directory named
-after the mission.
-
-For example, GDT-BurstCube has the following directory layout::
-
-  .
-  ├── docs
-  ├── src
-  │   └── gdt
-  │      └── missions
-  │          └── burstcube
-  │              └── __init__.py
-  └── tests
-    └── missions
-        └── burstcube
-
-
-Since GDT-BurstCube uses namespace packaging, both ``src/gdt`` and
-``src/gdt/missions`` do not contain a file named ``__init__.py``. This is
-because they are Namespace packages.
-
-You can learn more about Namespace packages by reading `PEP-420 <https://peps.python.org/pep-0420/>`_.
 
 Helping with Documentation
 -----------------------------
