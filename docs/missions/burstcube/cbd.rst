@@ -1,11 +1,11 @@
 .. _burstcube-cbd:
-.. |BurstCubeCbd| replace:: :class:`~gdt.missions.burstcube.cbd.BurstCubeCbd`
+.. |BurstCubeCBD| replace:: :class:`~gdt.missions.burstcube.cbd.BurstCubeCBD`
 
 ********************************************************************
 BurstCube Continuous Binned Data (:mod:`gdt.missions.burstcube.cbd`)
 ********************************************************************
 
-|BurstCubeCbd| reads a BurstCube CBD file (``monitor/*_3cbd_{uf,cl}.fits.gz``):
+|BurstCubeCBD| reads a BurstCube CBD file (``monitor/*_3cbd_{uf,cl}.fits.gz``):
 a 16-channel time history of counts for one detector, subclassing
 :class:`~gdt.core.phaii.Phaii`.
 
@@ -19,8 +19,8 @@ Two things this reader gets right that a naive port from GBM would not:
   the real ``TIME`` values, and gdt-core's contiguous-segment detection
   ensures a gap is never bridged.
 
-    >>> from gdt.missions.burstcube.cbd import BurstCubeCbd
-    >>> cbd = BurstCubeCbd.open('bc240530cs0_3cbd_cl.fits.gz')
+    >>> from gdt.missions.burstcube.cbd import BurstCubeCBD
+    >>> cbd = BurstCubeCBD.open('bc240530cs0_3cbd_cl.fits.gz')
     >>> cbd.detector
     'CS0'
     >>> cbd.data.num_chans

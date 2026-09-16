@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 from gdt.core.data_primitives import Gti
 
-from gdt.missions.burstcube.cbd import BurstCubeCbd
+from gdt.missions.burstcube.cbd import BurstCubeCBD
 from gdt.missions.burstcube.gti import BurstCubeGti, apply_to, complement, intersect, union
 
 from .conftest import make_cbd_fits, make_trend_gti_fits
@@ -59,7 +59,7 @@ def test_apply_to_reproduces_cl_style_cut_from_uf(tmp_path):
     time = 107629263.33 + (np.arange(n) + 1) * 0.256
     path = tmp_path / 'cbd_uf.fits'
     make_cbd_fits(path, time=time, gti=[(time[0] - 0.256, time[-1])])
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
 
     # a trend GTI that only covers the first half of the data
     cutoff = time[9]
@@ -81,7 +81,7 @@ def test_apply_to_drops_intervals_that_select_no_data(tmp_path):
     time = 107629263.33 + (np.arange(n) + 1) * 0.256
     path = tmp_path / 'cbd.fits'
     make_cbd_fits(path, time=time, gti=[(time[0] - 0.256, time[-1])])
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
 
     # one interval covering real data, three far outside it
     gti = Gti.from_list([(time[0] - 0.256, time[9]),
@@ -101,7 +101,7 @@ def test_apply_to_handles_several_disjoint_intervals(tmp_path):
     time = 107629263.33 + (np.arange(n) + 1) * 0.256
     path = tmp_path / 'cbd_multi.fits'
     make_cbd_fits(path, time=time, gti=[(time[0] - 0.256, time[-1])])
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
 
     gti = Gti.from_list([(time[0] - 0.256, time[4]),
                          (time[10] - 0.256, time[14]),
@@ -115,7 +115,7 @@ def test_apply_to_raises_when_nothing_overlaps(tmp_path):
     """No overlap at all is a user error worth naming, not an empty object."""
     path = tmp_path / 'cbd_no_overlap.fits'
     make_cbd_fits(path)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     far = cbd.time_range[1] + 1e6
     with pytest.raises(ValueError, match='does not|No interval'):
         apply_to(Gti.from_list([(far, far + 10)]), cbd)

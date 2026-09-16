@@ -15,7 +15,7 @@ import numpy as np
 from astropy.timeseries import TimeSeries
 
 from gdt.missions.burstcube.detectors import BurstCubeDetectors
-from gdt.missions.burstcube.hk import BurstCubeDetectorHk
+from gdt.missions.burstcube.hk import BurstCubeHK
 
 from .conftest import make_hk_fits
 
@@ -23,7 +23,7 @@ from .conftest import make_hk_fits
 def test_hk1_and_hk2_are_timeseries(tmp_path):
     path = tmp_path / 'hk.fits'
     make_hk_fits(path)
-    hk = BurstCubeDetectorHk.open(path)
+    hk = BurstCubeHK.open(path)
     assert isinstance(hk.hk1, TimeSeries)
     assert isinstance(hk.hk2, TimeSeries)
     assert len(hk.hk1) == 10
@@ -33,7 +33,7 @@ def test_hk1_and_hk2_are_timeseries(tmp_path):
 def test_enable_flags_full_array_and_per_detector(tmp_path):
     path = tmp_path / 'hk.fits'
     make_hk_fits(path)
-    hk = BurstCubeDetectorHk.open(path)
+    hk = BurstCubeHK.open(path)
 
     full = hk.trig_enabled()
     assert full.shape == (10, 4)
@@ -46,7 +46,7 @@ def test_enable_flags_full_array_and_per_detector(tmp_path):
 def test_enable_flags_accept_detector_enum(tmp_path):
     path = tmp_path / 'hk.fits'
     make_hk_fits(path)
-    hk = BurstCubeDetectorHk.open(path)
+    hk = BurstCubeHK.open(path)
     np.testing.assert_array_equal(hk.det_enabled(BurstCubeDetectors.CS2),
                                   hk.det_enabled(2))
 
@@ -58,7 +58,7 @@ def test_enable_flags_and_thresholds_accept_detector_name_string(tmp_path):
     """
     path = tmp_path / 'hk.fits'
     make_hk_fits(path)
-    hk = BurstCubeDetectorHk.open(path)
+    hk = BurstCubeHK.open(path)
     np.testing.assert_array_equal(hk.det_enabled('CS2'), hk.det_enabled(2))
     np.testing.assert_array_equal(hk.peak_threshold('cs1'), hk.peak_threshold(1))
 
@@ -66,7 +66,7 @@ def test_enable_flags_and_thresholds_accept_detector_name_string(tmp_path):
 def test_thresholds_from_hk2(tmp_path):
     path = tmp_path / 'hk.fits'
     make_hk_fits(path)
-    hk = BurstCubeDetectorHk.open(path)
+    hk = BurstCubeHK.open(path)
 
     peak = hk.peak_threshold()
     assert peak.shape == (3, 4)

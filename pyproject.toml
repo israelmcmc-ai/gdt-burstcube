@@ -57,6 +57,6 @@ where = ["src"]
 version = { attr = "gdt.missions.burstcube.__version__" }
 
 [project.urls]
-Documentation = 'https://astro-gdt-burstcube.readthedocs.io/en/latest/'
-Repository = 'https://github.com/USRA-STI/gdt-burstcube'
-Issues = 'https://github.com/USRA-STI/gdt-burstcube/issues'
+Documentation = 'https://github.com/israelmcmc-ai/gdt-burstcube'
+Repository = 'https://github.com/israelmcmc-ai/gdt-burstcube'
+Issues = 'https://github.com/israelmcmc-ai/gdt-burstcube/issues'

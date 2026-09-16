@@ -36,17 +36,17 @@ from gdt.core.data_primitives import Gti, TimeEnergyBins
 from . import caldb
 from .headers import CbdHeaders, CbdUnfilteredHeaders
 
-__all__ = ['BurstCubeCbd']
+__all__ = ['BurstCubeCBD']
 
 #: Tolerance, in seconds, separating float64 rounding artifacts in the bin
 #: timestamps from real sub-TIMEDEL structure. The artifacts sit at one ULP
 #: (~1.5e-08 s at BurstCube MET magnitudes) and the smallest real feature is
 #: 1.0e-03 s, so anything in between works; this sits ~67x above the noise and
-#: ~1000x below the feature. See the discussion in :meth:`BurstCubeCbd.open`.
+#: ~1000x below the feature. See the discussion in :meth:`BurstCubeCBD.open`.
 _SNAP_TOL = 1e-6
 
 
-class BurstCubeCbd(Phaii):
+class BurstCubeCBD(Phaii):
     """BurstCube continuous binned data (CBD) for one detector: a 16-channel
     time history of counts, built from the archive's ``monitor/*_3cbd_{uf,cl}.fits.gz``
     files.
@@ -127,7 +127,7 @@ class BurstCubeCbd(Phaii):
             file_path (str): The file path of the FITS file
 
         Returns:
-            (:class:`BurstCubeCbd`)
+            (:class:`BurstCubeCBD`)
         """
         obj = super().open(file_path, **kwargs)
 

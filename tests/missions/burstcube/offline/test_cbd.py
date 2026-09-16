@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 from gdt.core.binning.binned import combine_by_factor
 
-from gdt.missions.burstcube.cbd import BurstCubeCbd
+from gdt.missions.burstcube.cbd import BurstCubeCBD
 from gdt.missions.burstcube.headers import CbdHeaders, CbdUnfilteredHeaders
 
 from .conftest import TIMEDEL_CBD, make_cbd_fits
@@ -30,7 +30,7 @@ def test_timepixr_bin_edges(tmp_path):
     """
     path = tmp_path / 'cbd.fits'
     time, _ = make_cbd_fits(path)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     np.testing.assert_allclose(cbd.data.tstart, time - TIMEDEL_CBD)
     np.testing.assert_allclose(cbd.data.tstop, time)
 
@@ -42,7 +42,7 @@ def test_detector_and_ebounds(tmp_path):
     """
     path = tmp_path / 'cbd.fits'
     make_cbd_fits(path, detector='CS0')
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     assert cbd.detector == 'CS0'
     assert cbd.num_chans == 16
     np.testing.assert_allclose(cbd.ebounds.low_edges()[1], 28.48, atol=1e-2)
@@ -60,7 +60,7 @@ def test_gap_is_preserved_not_filled(tmp_path):
 
     path = tmp_path / 'cbd_gap.fits'
     make_cbd_fits(path, time=time, gti=gti)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
 
     assert cbd.gti.num_intervals == 2
     np.testing.assert_allclose(cbd.gti.as_list(), gti)
@@ -80,7 +80,7 @@ def test_blended_flag_catches_short_dt(tmp_path):
     time[5:] += (0.1 - TIMEDEL_CBD)  # index 5 now arrives only 0.1 s after index 4
     path = tmp_path / 'cbd_blend.fits'
     make_cbd_fits(path, time=time)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
 
     expected = np.zeros(n, dtype=bool)
     expected[5] = True
@@ -94,7 +94,7 @@ def test_original_time_and_sums_exposed(tmp_path):
     """
     path = tmp_path / 'cbd.fits'
     time, counts = make_cbd_fits(path)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     np.testing.assert_allclose(cbd.original_time, time - 0.01)
     np.testing.assert_allclose(cbd.time_syst_error, 0.05)
     np.testing.assert_array_equal(cbd.sumtot, counts.sum(axis=1))
@@ -107,7 +107,7 @@ def test_auxiliary_columns_are_none_after_slice(tmp_path):
     """
     path = tmp_path / 'cbd.fits'
     make_cbd_fits(path)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     sliced = cbd.slice_time([cbd.time_range])
     assert sliced.original_time is None
     assert sliced.blended is None
@@ -121,7 +121,7 @@ def test_combine_by_factor_conserves_counts_within_a_contiguous_segment(tmp_path
     n = 20  # one contiguous segment, divisible by 2
     path = tmp_path / 'cbd.fits'
     time, counts = make_cbd_fits(path)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
 
     rebinned = cbd.rebin_time(combine_by_factor, 2)
     assert rebinned.data.size == (n // 2, 16)
@@ -141,7 +141,7 @@ def test_slicing_across_a_gap_does_not_fill_it(tmp_path):
     gti = [(time[0] - TIMEDEL_CBD, time[9]), (time[10] - TIMEDEL_CBD, time[-1])]
     path = tmp_path / 'cbd_gap.fits'
     make_cbd_fits(path, time=time, gti=gti)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
 
     sliced = cbd.slice_time([(time[0] - TIMEDEL_CBD, time[-1])])
     assert sliced.gti.num_intervals == 2
@@ -158,7 +158,7 @@ def test_cbd_gti_schema_uf_variant_has_extra_columns(tmp_path):
     make_cbd_fits(path, gti_schema='uf')
     with warnings.catch_warnings():
         warnings.simplefilter('error')
-        cbd = BurstCubeCbd.open(path)
+        cbd = BurstCubeCBD.open(path)
     assert isinstance(cbd.headers, CbdUnfilteredHeaders)
     assert cbd.gti.num_intervals == 1
 
@@ -170,7 +170,7 @@ def test_cbd_gti_schema_cl_variant_uses_standard_headers(tmp_path):
     make_cbd_fits(path, gti_schema='cl')
     with warnings.catch_warnings():
         warnings.simplefilter('error')
-        cbd = BurstCubeCbd.open(path)
+        cbd = BurstCubeCBD.open(path)
     assert isinstance(cbd.headers, CbdHeaders)
     assert not isinstance(cbd.headers, CbdUnfilteredHeaders)
 
@@ -188,7 +188,7 @@ def test_bin_edges_snap_only_float_noise_not_real_short_bins(tmp_path):
     path = tmp_path / 'cbd_noise.fits'
     make_cbd_fits(path, time=time)
 
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     d = cbd.data
     resid = d.tstart[1:] - d.tstop[:-1]
 
@@ -217,7 +217,7 @@ def test_short_bins_flagged_consistently(tmp_path):
     path = tmp_path / 'cbd_short.fits'
     make_cbd_fits(path, time=time)
 
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     assert cbd.blended.sum() == 2
     assert cbd.blended[2] and cbd.blended[5]
 
@@ -227,7 +227,7 @@ def test_sumtot_absent_in_unfiltered_files(tmp_path):
     carry TIME, COUNTS, ORIGINAL_TIME and TIME_SYST_ERROR only."""
     path = tmp_path / 'cbd_nosums.fits'
     make_cbd_fits(path, with_sums=False)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     assert cbd.sumtot is None
     assert cbd.sumch_2_15 is None
     assert cbd.data.counts.sum() > 0
@@ -236,7 +236,7 @@ def test_sumtot_absent_in_unfiltered_files(tmp_path):
 def test_sumtot_present_in_cleaned_files(tmp_path):
     path = tmp_path / 'cbd_sums.fits'
     make_cbd_fits(path, with_sums=True)
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     assert cbd.sumtot is not None
     assert np.array_equal(cbd.sumtot, cbd.data.counts.sum(axis=1))
 
@@ -254,7 +254,7 @@ def test_rebin_works_when_short_bins_would_otherwise_overlap(tmp_path):
     path = tmp_path / 'cbd_overlap.fits'
     make_cbd_fits(path, time=time)
 
-    cbd = BurstCubeCbd.open(path)
+    cbd = BurstCubeCBD.open(path)
     assert np.all(cbd.data.tstart[1:] >= cbd.data.tstop[:-1])
 
     rebinned = cbd.rebin_time(combine_by_factor, 2)

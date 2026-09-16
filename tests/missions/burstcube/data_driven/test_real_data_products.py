@@ -32,11 +32,11 @@ from astropy.io import fits
 from gdt.core.binning.binned import combine_by_factor
 from gdt.core.binning.unbinned import bin_by_time
 
-from gdt.missions.burstcube.cbd import BurstCubeCbd
+from gdt.missions.burstcube.cbd import BurstCubeCBD
 from gdt.missions.burstcube.gti import BurstCubeGti, intersect
-from gdt.missions.burstcube.hk import BurstCubeDetectorHk
+from gdt.missions.burstcube.hk import BurstCubeHK
 from gdt.missions.burstcube.orbit import BurstCubeOrbit
-from gdt.missions.burstcube.tte import BurstCubeTte
+from gdt.missions.burstcube.tte import BurstCubeTTE
 from gdt.missions.burstcube.headers import CbdHeaders, CbdUnfilteredHeaders
 
 from .conftest import real_file
@@ -55,7 +55,7 @@ TIMEDEL = 0.256
 def _open_cbd(basename):
     with warnings.catch_warnings():
         warnings.simplefilter('error')       # reading must be warning-free
-        return BurstCubeCbd.open(real_file(basename))
+        return BurstCubeCBD.open(real_file(basename))
 
 
 # --------------------------------------------------------------------------
@@ -221,7 +221,7 @@ def test_cbd_energy_axis_is_per_detector_caldb():
 def _open_tte():
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')      # the broken-header warning is expected
-        return BurstCubeTte.open(real_file(TTE))
+        return BurstCubeTTE.open(real_file(TTE))
 
 
 def test_tte_broken_time_keywords_are_recovered():
@@ -230,7 +230,7 @@ def test_tte_broken_time_keywords_are_recovered():
     The recovered span should match the file's own ONTIME.
     """
     with pytest.warns(UserWarning, match='TSTOP'):
-        tte = BurstCubeTte.open(real_file(TTE))
+        tte = BurstCubeTTE.open(real_file(TTE))
 
     start, stop = tte.time_range
     assert stop > start
@@ -343,7 +343,7 @@ def test_gti_files_read_and_intersect():
 
 def test_detector_hk_exposes_thresholds_and_enable_flags():
     """HK1 and HK2 carry per-detector arrays indexed 0-3."""
-    hk = BurstCubeDetectorHk.open(real_file(DET_HK))
+    hk = BurstCubeHK.open(real_file(DET_HK))
     assert len(hk.hk1) > 0
     assert len(hk.hk2) > 0
 

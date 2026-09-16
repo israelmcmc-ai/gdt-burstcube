@@ -63,7 +63,7 @@ def test_tstart_sync_updates_date_obs():
 
 
 def test_tstart_sync_does_not_crash_on_numeric_string_tstart():
-    """Per archive caveat #4 (verified in bc240530cs0_tte_uf.evt.gz), TTE
+    """Verified across all 28 archive TTE files, TTE
     files sometimes carry TSTART/TSTOP as numeric strings (e.g.
     '107629534.257') with TSTOP < TSTART. Setting such a value must not
     raise; the DATE-OBS sync should still follow the (semantically

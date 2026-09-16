@@ -13,16 +13,23 @@
 """BurstCube TTE (time-tagged event) data: a 1024-channel photon list for one
 detector, built from the archive's ``events/*_tte_uf.evt.gz`` files.
 
-Per archive caveat #4, the ``EVENTS`` extension's own ``TSTART``/``TSTOP``
-keywords are unreliable (sometimes written as strings, sometimes with
-``TSTOP < TSTART``, which drives ``TELAPSE``/``EXPOSURE`` negative). This
-reader never uses those two keywords to build the event data or its GTI --
-the GTI always comes from the ``STDGTI`` extension, and the time range comes
-from the event times themselves, which is the fallback the spec calls for.
-A `UserWarning` is raised if the broken condition is detected, but nothing
-crashes and no negative exposure is ever produced.
+The ``EVENTS`` extension's own ``TSTART``/``TSTOP`` keywords are unusable in
+**every** TTE file in the archive. All 28 store them as strings rather than
+numbers, and in all 28 ``TSTOP - TSTART`` disagrees with the file's own
+``ONTIME``. In 16 of them ``TSTOP < TSTART``, which drives ``TELAPSE`` and
+``EXPOSURE`` negative and leaves the primary ``DATE-END`` earlier than
+``DATE-OBS``. This is not described in the official archive caveats document
+-- caveat #4 concerns how few TTE files were downlinked and caveat #5 the
+2024-08-15 timeline alignment, neither the header keywords. See the README's
+Caveats section for the per-file breakdown.
 
-There is no ``Rsp.to_tte()``: instead, :meth:`BurstCubeTte.to_64_channels`
+This reader therefore never uses those two keywords. The GTI comes from the
+``STDGTI`` extension and the time range from the event times, which agree
+with each other exactly in all 28 files and with ``ONTIME`` to better than a
+millisecond. A `UserWarning` is raised when the keywords are self-
+contradictory, but nothing crashes and no negative exposure is produced.
+
+There is no ``Rsp.to_tte()``: instead, :meth:`BurstCubeTTE.to_64_channels`
 applies the CALDB ``reb64`` grouping (1024 -> 64 channels) so that TTE data
 can be folded against the native 64-channel detector response.
 """
@@ -37,10 +44,10 @@ from gdt.core.data_primitives import Gti, EventList
 from . import caldb
 from .headers import TteHeaders
 
-__all__ = ['BurstCubeTte']
+__all__ = ['BurstCubeTTE']
 
 
-class BurstCubeTte(PhotonList):
+class BurstCubeTTE(PhotonList):
     """BurstCube time-tagged event (TTE) data for one detector: a 1024-channel
     photon list, with a full CALDB energy calibration (``eb1024``).
     """
@@ -67,7 +74,7 @@ class BurstCubeTte(PhotonList):
             time_ranges ([(float, float), ...]): The time ranges to slice to
 
         Returns:
-            (:class:`BurstCubeTte`)
+            (:class:`BurstCubeTTE`)
 
         Raises:
             ValueError: If any two of ``time_ranges`` overlap, since the
@@ -83,19 +90,18 @@ class BurstCubeTte(PhotonList):
 
         segments = [self.data.time_slice(*r) for r in ordered]
 
-        # The result covers the original GTI intersected with the UNION of the
-        # kept ranges. Accumulating by repeated intersection instead -- as
-        # gdt-core's PhotonList.slice_time does -- empties the GTI as soon as
-        # two ranges are disjoint, and the next intersection then raises on
-        # the empty result. Segments that selected no events contribute
-        # nothing and have a time_range of None, so they are skipped rather
-        # than passed to Gti.from_list, which cannot take None.
-        # Ranges that contain no events are dropped. An empty EventList has a
+        # The result covers the original GTI intersected with the UNION of
+        # the kept ranges. Accumulating by repeated intersection instead --
+        # as gdt-core's PhotonList.slice_time does -- empties the GTI as soon
+        # as two ranges are disjoint, and the next intersection then raises
+        # on the empty result.
+        #
+        # Ranges containing no events are dropped: an empty EventList has a
         # time_range of None, which Gti.from_list cannot take, and
-        # EventList.merge reduces over each segment's times and so fails on an
-        # empty one. Dropping them is also what a user means: TTE coverage is
-        # clustered, so a perfectly reasonable set of windows can leave some
-        # empty.
+        # EventList.merge reduces over each segment's times and so fails on
+        # an empty one. Dropping them is also what a user means -- TTE
+        # coverage is clustered, so a reasonable set of windows can leave
+        # some empty.
         populated = [segment for segment in segments if segment.size > 0]
         if not populated:
             raise ValueError(
@@ -129,7 +135,7 @@ class BurstCubeTte(PhotonList):
             file_path (str): The file path of the FITS file
 
         Returns:
-            (:class:`BurstCubeTte`)
+            (:class:`BurstCubeTTE`)
         """
         obj = super().open(file_path, **kwargs)
 
@@ -147,8 +153,9 @@ class BurstCubeTte(PhotonList):
         channels = obj.column(events_idx, 'PHA')
         data = EventList(times=times, channels=channels, ebounds=ebounds)
 
-        # per archive caveat #4, EVENTS' own TSTART/TSTOP are unreliable;
-        # the GTI always comes from STDGTI's own START/STOP columns instead.
+        # EVENTS' own TSTART/TSTOP are unusable in every archive TTE file
+        # (see the module docstring), so the GTI always comes from STDGTI's
+        # own START/STOP columns instead.
         # the _cl/_uf CBD schema difference (round-1 finding) does not apply
         # here: TTE STDGTI is always the 6-column schema, but START/STOP are
         # common to both, so reading just those two columns is safe either way.
@@ -169,7 +176,7 @@ class BurstCubeTte(PhotonList):
         direction).
 
         Returns:
-            (:class:`BurstCubeTte`)
+            (:class:`BurstCubeTTE`)
         """
         reb = caldb.rebin(self.detector, 64)
         # reb64's groups are contiguous (chan_min[i] == chan_max[i-1] + 1),
@@ -184,7 +191,7 @@ class BurstCubeTte(PhotonList):
     @staticmethod
     def _warn_if_tstart_tstop_broken(events_header):
         """Warn (never raise) if this file exhibits the archive's known
-        broken EVENTS TSTART/TSTOP (caveat #4): TSTART/TSTOP stored as
+        broken EVENTS TSTART/TSTOP: TSTART/TSTOP stored as
         strings and/or TSTOP < TSTART, which would otherwise propagate a
         negative TELAPSE/EXPOSURE.
 
@@ -199,7 +206,7 @@ class BurstCubeTte(PhotonList):
         if tstop < tstart:
             warnings.warn(
                 'This TTE file has TSTOP < TSTART in its EVENTS header '
-                '(archive caveat #4); ignoring both and using the STDGTI '
+                '; ignoring both and using the STDGTI '
                 'extension and the event times instead.', UserWarning,
                 stacklevel=3)
 

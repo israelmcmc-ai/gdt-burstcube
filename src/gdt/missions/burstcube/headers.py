@@ -117,7 +117,7 @@ class BurstCubeHeader(Header):
 
     The sync is suspended while headers are populated from a file, so that
     reading never alters what the archive wrote; see :func:`_dates_unsynced`.
-    Per archive caveat #4, ``TSTART``/``TSTOP`` are sometimes written as
+    In every archive TTE file ``TSTART``/``TSTOP`` are written as
     strings with ``TSTOP < TSTART`` in TTE files, so the sync is best-effort
     and quietly does nothing if the value cannot be interpreted as a MET,
     rather than raising.
@@ -222,7 +222,7 @@ class CbdGtiHeader(BurstCubeHeader):
         ``STOP_TIME_SYST_ERROR``) with ``HDUCLAS1='GTI'`` and none of the
         three keywords above -- see :class:`TteGtiHeader`. Because nothing in
         the files guarantees this correlation holds for every observation,
-        :meth:`~gdt.missions.burstcube.cbd.BurstCubeCbd.open` selects between
+        :meth:`~gdt.missions.burstcube.cbd.BurstCubeCBD.open` selects between
         the two by inspecting the extension itself rather than by the
         ``_uf``/``_cl`` filename.
     """
@@ -241,7 +241,7 @@ class CbdGtiHeader(BurstCubeHeader):
 class EventsHeader(BurstCubeHeader):
     """Header for the ``EVENTS`` extension of a TTE file.
 
-    Per archive caveat #4, ``TSTART``/``TSTOP`` are sometimes stored as
+    In every archive TTE file ``TSTART``/``TSTOP`` are stored as
     strings with ``TSTOP < TSTART``, giving negative ``TELAPSE``/``EXPOSURE``
     while ``ONTIME`` stays positive; readers must fall back to the ``STDGTI``
     extension and the event times themselves rather than trusting these two

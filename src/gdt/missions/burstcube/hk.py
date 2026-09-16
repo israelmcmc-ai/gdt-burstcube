@@ -16,8 +16,8 @@ each exposed as an :class:`~astropy.timeseries.TimeSeries`.
 
 Per archive caveat #7, the per-detector energy thresholds were raised mid-mission
 from ~21-30 keV to ~100 keV to suppress a non-Poissonian low-energy noise
-component; :meth:`~BurstCubeDetectorHk.peak_threshold` and
-:meth:`~BurstCubeDetectorHk.base_threshold` are how that change shows up in
+component; :meth:`~BurstCubeHK.peak_threshold` and
+:meth:`~BurstCubeHK.base_threshold` are how that change shows up in
 the housekeeping data.
 """
 from astropy.timeseries import TimeSeries
@@ -27,7 +27,7 @@ from gdt.core.file import FitsFileContextManager
 from .headers import DetectorHkHeaders
 from .time import Time
 
-__all__ = ['BurstCubeDetectorHk']
+__all__ = ['BurstCubeHK']
 
 # the 4-element housekeeping arrays are indexed by detector number 0..3,
 # matching BurstCubeDetectors.number
@@ -36,7 +36,7 @@ _ENABLE_FLAG_COLUMNS = ('TRIG_ENABLED', 'DET_ENABLED', 'CBD_ENABLED',
 _THRESHOLD_COLUMNS = ('PEAK_THRES', 'BASE_THRES')
 
 
-class BurstCubeDetectorHk(FitsFileContextManager):
+class BurstCubeHK(FitsFileContextManager):
     """Reader for a BurstCube detector housekeeping file."""
 
     @property
@@ -61,7 +61,7 @@ class BurstCubeDetectorHk(FitsFileContextManager):
             file_path (str): The file path of the FITS file
 
         Returns:
-            (:class:`BurstCubeDetectorHk`)
+            (:class:`BurstCubeHK`)
         """
         obj = super().open(file_path, **kwargs)
         hdrs = [hdu.header for hdu in obj.hdulist]

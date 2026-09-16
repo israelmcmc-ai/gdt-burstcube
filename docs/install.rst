@@ -79,17 +79,17 @@ the following examples::
     >>> # import the detector definitions
     >>> from gdt.missions.burstcube.detectors import BurstCubeDetectors
     >>> # import the data interface for continuous binned data (CBD)
-    >>> from gdt.missions.burstcube.cbd import BurstCubeCbd
+    >>> from gdt.missions.burstcube.cbd import BurstCubeCBD
     >>> # find and download one observation day
     >>> from gdt.missions.burstcube.finders import BurstCubeObsFinder
     >>> finder = BurstCubeObsFinder('240530')
     >>> paths = finder.get_cbd('./data', detectors='CS0', variant='cl')
-    >>> cbd = BurstCubeCbd.open(paths[0])
+    >>> cbd = BurstCubeCBD.open(paths[0])
     >>> cbd.to_lightcurve()
 
 See the :ref:`notebooks` for worked, end-to-end examples against the real
 archive, and be sure to read the **Caveats** section of the top-level
-`README <https://github.com/USRA-STI/gdt-burstcube#caveats>`_ before drawing
+`README <https://github.com/israelmcmc-ai/gdt-burstcube#caveats>`_ before drawing
 conclusions from BurstCube data -- several of its quirks are not obvious
 from the API alone.
 
@@ -123,7 +123,7 @@ the following commands to quickly set up a development environment:
    . venv/bin/activate
    pip install --upgrade pip setuptools wheel
    git clone git@github.com:USRA-STI/gdt-core.git
-   git clone git@github.com:USRA-STI/gdt-burstcube.git
+   git clone git@github.com:israelmcmc-ai/gdt-burstcube.git
    pip install -e gdt-core/
    gdt-data init
    pip install -e gdt-burstcube/

@@ -168,7 +168,7 @@ def make_tte_fits(path, detector='CS0', times=None, channels=None,
         channels (numpy.ndarray, optional): Event PHA channels (0-1023).
         broken_tstart_tstop (bool): If True (the default, matching the real
             archive), EVENTS' TSTART/TSTOP are written as strings with
-            TSTOP < TSTART, reproducing archive caveat #4.
+            TSTOP < TSTART, as 16 of the 28 archive TTE files do.
 
     Returns:
         (numpy.ndarray, numpy.ndarray): the `times` and `channels` arrays used.

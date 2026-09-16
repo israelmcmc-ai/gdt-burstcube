@@ -18,7 +18,7 @@ import pytest
 from gdt.core.binning.unbinned import bin_by_time
 from gdt.core.phaii import Phaii
 
-from gdt.missions.burstcube.tte import BurstCubeTte
+from gdt.missions.burstcube.tte import BurstCubeTTE
 
 from .conftest import TIMEDEL_CBD, make_tte_fits
 
@@ -26,7 +26,7 @@ from .conftest import TIMEDEL_CBD, make_tte_fits
 def test_open_reads_1024_channels_and_correct_detector(tmp_path):
     path = tmp_path / 'tte.fits'
     times, channels = make_tte_fits(path, detector='CS0', broken_tstart_tstop=False)
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
     assert tte.detector == 'CS0'
     assert tte.num_chans == 1024
     np.testing.assert_allclose(np.sort(tte.data.times), np.sort(times))
@@ -40,7 +40,7 @@ def test_broken_tstart_tstop_does_not_crash_and_warns(tmp_path):
     path = tmp_path / 'tte_broken.fits'
     times, channels = make_tte_fits(path, broken_tstart_tstop=True)
     with pytest.warns(UserWarning, match='TSTOP < TSTART'):
-        tte = BurstCubeTte.open(path)
+        tte = BurstCubeTTE.open(path)
 
     assert tte.gti.range[0] == pytest.approx(times.min())
     assert tte.gti.range[1] == pytest.approx(times.max())
@@ -52,7 +52,7 @@ def test_well_formed_tstart_tstop_does_not_warn(tmp_path):
     make_tte_fits(path, broken_tstart_tstop=False)
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter('always')
-        BurstCubeTte.open(path)
+        BurstCubeTTE.open(path)
     user_warnings = [w for w in record if issubclass(w.category, UserWarning)]
     assert not user_warnings
 
@@ -64,7 +64,7 @@ def test_to_64_channels_preserves_events_and_top_energy_edge(tmp_path):
     """
     path = tmp_path / 'tte.fits'
     make_tte_fits(path, broken_tstart_tstop=False)
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
 
     tte64 = tte.to_64_channels()
     assert tte64.num_chans == 64
@@ -80,7 +80,7 @@ def test_bin_by_time_conserves_total_counts(tmp_path):
     """
     path = tmp_path / 'tte.fits'
     times, channels = make_tte_fits(path, broken_tstart_tstop=False)
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
 
     phaii = tte.to_phaii(bin_by_time, TIMEDEL_CBD, phaii_class=Phaii)
     assert phaii.data.counts.sum() == tte.data.size
@@ -95,7 +95,7 @@ def test_event_at_known_time_lands_in_expected_bin(tmp_path):
     channels = np.array([5], dtype=np.int16)
     path = tmp_path / 'tte_single.fits'
     make_tte_fits(path, times=times, channels=channels, broken_tstart_tstop=False)
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
 
     phaii = tte.to_phaii(bin_by_time, TIMEDEL_CBD, tstart=t0, tstop=t0 + 1.0,
                          phaii_class=Phaii)
@@ -117,7 +117,7 @@ def test_event_exactly_on_a_bin_edge(tmp_path):
     channels = np.array([5], dtype=np.int16)
     path = tmp_path / 'tte_edge.fits'
     make_tte_fits(path, times=times, channels=channels, broken_tstart_tstop=False)
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
 
     phaii = tte.to_phaii(bin_by_time, TIMEDEL_CBD, tstart=t0, tstop=t0 + 1.0,
                          phaii_class=Phaii)
@@ -144,7 +144,7 @@ def test_tte_binned_at_0_256_reproduces_synthetic_cbd(tmp_path):
 
     tte_path = tmp_path / 'tte_for_roundtrip.fits'
     make_tte_fits(tte_path, times=times, channels=channels, broken_tstart_tstop=False)
-    tte = BurstCubeTte.open(tte_path)
+    tte = BurstCubeTTE.open(tte_path)
 
     phaii = tte.to_phaii(bin_by_time, TIMEDEL_CBD, tstart=t0,
                          tstop=t0 + n_bins * TIMEDEL_CBD, phaii_class=Phaii)
@@ -174,7 +174,7 @@ def test_slice_time_keeps_events_sharing_a_timestamp(tmp_path):
     path = tmp_path / 'tte_dup_times.fits'
     make_tte_fits(path, times=times, channels=channels)
 
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
     assert tte.data.size == len(times)
     assert len(np.unique(tte.data.times)) == len(stamps)  # the collision
 
@@ -191,7 +191,7 @@ def test_to_phaii_with_time_range_keeps_all_counts(tmp_path):
     path = tmp_path / 'tte_dup_phaii.fits'
     make_tte_fits(path, times=times, channels=channels)
 
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
     binned = tte.to_phaii(bin_by_time, 0.256, time_range=[tte.time_range])
     assert binned.data.counts.sum() == len(times)
 
@@ -204,7 +204,7 @@ def test_slice_time_rejects_overlapping_ranges(tmp_path):
     silently deduplicated."""
     path = tmp_path / 'tte_overlap.fits'
     make_tte_fits(path)
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
     t0 = tte.time_range[0]
     with pytest.raises(ValueError, match='must not overlap'):
         tte.slice_time([(t0, t0 + 10.0), (t0 + 5.0, t0 + 15.0)])
@@ -215,7 +215,7 @@ def test_slice_time_accepts_disjoint_ranges(tmp_path):
     times = 107629263.5 + np.arange(300) * 0.1
     path = tmp_path / 'tte_disjoint.fits'
     make_tte_fits(path, times=times, channels=np.full(len(times), 100))
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
     t0 = times[0]
     r1, r2 = (t0, t0 + 5.0), (t0 + 10.0, t0 + 15.0)
     expected = int((((times >= r1[0]) & (times <= r1[1])) |
@@ -233,7 +233,7 @@ def test_slice_time_handles_disjoint_ranges_where_some_are_empty(tmp_path):
                                           100.0 + np.arange(50) * 0.01])
     path = tmp_path / 'tte_clustered.fits'
     make_tte_fits(path, times=times, channels=np.full(len(times), 100))
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
 
     t0 = times[0]
     ranges = [(t0, t0 + 1.0),          # populated
@@ -246,7 +246,7 @@ def test_slice_time_handles_disjoint_ranges_where_some_are_empty(tmp_path):
 def test_slice_time_raises_when_no_range_contains_events(tmp_path):
     path = tmp_path / 'tte_none.fits'
     make_tte_fits(path)
-    tte = BurstCubeTte.open(path)
+    tte = BurstCubeTTE.open(path)
     far = tte.time_range[1] + 1e6
     with pytest.raises(ValueError, match='contain any events'):
         tte.slice_time([(far, far + 10.0)])

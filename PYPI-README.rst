@@ -37,11 +37,11 @@ header keywords in at least one real TTE file, a mission timeline whose own
 UTC column is 37 seconds off its own MET column, and frequent data gaps.
 This toolkit documents each of these rather than hiding them. See the full
 **Caveats** section of the
-`README on GitHub <https://github.com/USRA-STI/gdt-burstcube#caveats>`_
+`README on GitHub <https://github.com/israelmcmc-ai/gdt-burstcube#caveats>`_
 before drawing conclusions from BurstCube data.
 
 Contributing Code or Documentation
 --------------------------------------
 
 If you plan to help with the development or documentation of astro-gdt, then
-please visit our github site at https://github.com/USRA-STI/gdt-burstcube.
+please visit our github site at https://github.com/israelmcmc-ai/gdt-burstcube.

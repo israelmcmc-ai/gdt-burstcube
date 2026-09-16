@@ -30,13 +30,13 @@ Quickstart
 .. code-block:: python
 
    from gdt.missions.burstcube.finders import BurstCubeObsFinder
-   from gdt.missions.burstcube.cbd import BurstCubeCbd
+   from gdt.missions.burstcube.cbd import BurstCubeCBD
 
    # find and download the cleaned CBD file for one detector, one day
    finder = BurstCubeObsFinder('240530')
    paths = finder.get_cbd('./data', detectors='CS0', variant='cl')
 
-   cbd = BurstCubeCbd.open(paths[0])
+   cbd = BurstCubeCBD.open(paths[0])
    lc = cbd.to_lightcurve()
 
 See the Jupyter notebooks (inside docs/notebooks)
@@ -98,18 +98,80 @@ independently reconstructed attitude quaternion via
 for a sky-position response without one raises a clear error rather than
 silently assuming an orientation.
 
-TTE header keywords are broken in at least one real file
+TTE TSTART/TSTOP are unusable in every file
 -------------------------------------------------------------
 
-at has an ``EVENTS`` extension whose own
-``TSTART``/``TSTOP`` header keywords cannot be trusted: they are stored as
-**strings** rather than numbers, ``TSTOP`` is less than ``TSTART``, and the
-derived ``EXPOSURE`` is negative. ``BurstCubeTte`` ignores these keywords
-entirely and derives the time range from the ``STDGTI`` extension and the
-event times themselves, emitting a ``UserWarning`` when it does so. TTE
-exists for only 7 of the roughly 89 observation days in the archive, so this
-mainly matters if you read TTE headers directly rather than through this
-reader.
+The ``EVENTS`` extension's ``TSTART``/``TSTOP`` keywords cannot be trusted in
+**any** of the archive's 28 TTE files (7 observation days x 4 detectors). Two
+distinct problems, verified by reading all 28:
+
+* **All 28** store ``TSTART``/``TSTOP`` as FITS *strings* rather than numbers,
+  and in all 28 ``TSTOP - TSTART`` disagrees with the file's own ``ONTIME``.
+* **16 of the 28** additionally have ``TSTOP < TSTART``, which makes ``TELAPSE``
+  and ``EXPOSURE`` negative and leaves the primary header's ``DATE-END``
+  *earlier* than its ``DATE-OBS``.
+
+Which files are affected, by observation day (all four detectors behave the
+same way within a day):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 14 12 18 18 38
+
+   * - Day
+     - Files
+     - ``TSTOP - TSTART``
+     - ``ONTIME`` (s)
+     - Problems
+   * - 240530
+     - 4
+     - -15.6 s
+     - 295.06 - 295.07
+     - strings, ``TSTOP < TSTART``, negative exposure
+   * - 240602
+     - 4
+     - -291.3 s
+     - 440.05 - 440.06
+     - strings, ``TSTOP < TSTART``, negative exposure
+   * - 240628
+     - 4
+     - +38.2 s
+     - 65.21 - 65.22
+     - strings, span disagrees with ``ONTIME``
+   * - 240629
+     - 4
+     - +100.4 s
+     - 244.53 - 244.55
+     - strings, span disagrees with ``ONTIME``
+   * - 240813
+     - 4
+     - -472.5 s
+     - 3179.04
+     - strings, ``TSTOP < TSTART``, negative exposure
+   * - 240814
+     - 4
+     - +44.0 s
+     - 224.26 - 224.28
+     - strings, span disagrees with ``ONTIME``
+   * - 240815
+     - 4
+     - -16.8 s
+     - 282.79 - 282.81
+     - strings, ``TSTOP < TSTART``, negative exposure
+
+What *is* reliable: the ``STDGTI`` extension's ``START``/``STOP`` reproduce the
+span of the actual event times exactly (to 0.000 s) in all 28 files, and
+``ONTIME`` agrees with that span to better than a millisecond. ``BurstCubeTTE``
+therefore ignores ``TSTART``/``TSTOP`` entirely and derives the time range from
+``STDGTI`` and the events, emitting a ``UserWarning`` when the keywords are
+self-contradictory. If you read TTE headers directly rather than through this
+reader, do the same.
+
+Note that this problem is **not** described in the official caveats document.
+Its caveat #4 concerns how few TTE files were downlinked, and caveat #5 the
+2024-08-15 timeline alignment; neither mentions the header keywords. (Caveat #4
+also says 34 TTE files of 100 s duration were downlinked, where the archive
+holds 28 files whose durations run from 65 s to 3179 s.)
 
 Timeline UTC column is 37 seconds off its own MET column
 -------------------------------------------------------------
@@ -188,7 +250,7 @@ use the following commands to quickly set up a development environment:
    . venv/bin/activate
    pip install --upgrade pip setuptools wheel
    git clone git@github.com:USRA-STI/gdt-core.git
-   git clone git@github.com:USRA-STI/gdt-burstcube.git
+   git clone git@github.com:israelmcmc-ai/gdt-burstcube.git
    pip install -e gdt-core/
    gdt-data init
    pip install -e gdt-burstcube/

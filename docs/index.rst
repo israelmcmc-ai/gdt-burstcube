@@ -22,13 +22,13 @@ thresholds, an EBOUNDS table in the response files that disagrees with
 CALDB, attitude reconstructed for only 3 brief epochs across the whole
 mission, and frequent data gaps. This toolkit works around what it safely
 can and surfaces the rest rather than hiding it. Read the **Caveats** section
-of the top-level `README <https://github.com/USRA-STI/gdt-burstcube#caveats>`_
+of the top-level `README <https://github.com/israelmcmc-ai/gdt-burstcube#caveats>`_
 before drawing conclusions from BurstCube data.
 
 .. rubric:: Additional Resources
 
 For questions, bug reports, and comments, please visit the
-`GDT-BurstCube GitHub repository <https://github.com/USRA-STI/gdt-burstcube>`_.
+`GDT-BurstCube GitHub repository <https://github.com/israelmcmc-ai/gdt-burstcube>`_.
 
 ***************
 Getting Started
