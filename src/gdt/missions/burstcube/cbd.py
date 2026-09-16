@@ -34,7 +34,7 @@ from gdt.core.phaii import Phaii
 from gdt.core.data_primitives import Gti, TimeEnergyBins
 
 from . import caldb
-from .headers import CbdHeaders, CbdUnfilteredHeaders
+from .headers import CBDHeaders, CBDUnfilteredHeaders
 
 __all__ = ['BurstCubeCBD']
 
@@ -133,13 +133,13 @@ class BurstCubeCBD(Phaii):
 
         hdrs = [hdu.header for hdu in obj.hdulist]
 
-        # The STDGTI extension comes in two schemas (see CbdGtiHeader): the
+        # The STDGTI extension comes in two schemas (see CBDGtiHeader): the
         # 2-column standard form and the 6-column form shared with TTE. Pick
         # by looking at the extension, not at the _uf/_cl filename, since
         # nothing in the files guarantees that correlation holds everywhere.
         gti_hdr = obj.hdulist['STDGTI'].header
-        headers_cls = (CbdHeaders if 'HDUCLAS2' in gti_hdr
-                       else CbdUnfilteredHeaders)
+        headers_cls = (CBDHeaders if 'HDUCLAS2' in gti_hdr
+                       else CBDUnfilteredHeaders)
         headers = headers_cls.from_headers(hdrs)
 
         cbd_idx = obj.hdu_index_from_name('CBD')

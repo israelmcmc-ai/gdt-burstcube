@@ -37,7 +37,7 @@ from gdt.missions.burstcube.gti import BurstCubeGti, intersect
 from gdt.missions.burstcube.hk import BurstCubeHK
 from gdt.missions.burstcube.orbit import BurstCubeOrbit
 from gdt.missions.burstcube.tte import BurstCubeTTE
-from gdt.missions.burstcube.headers import CbdHeaders, CbdUnfilteredHeaders
+from gdt.missions.burstcube.headers import CBDHeaders, CBDUnfilteredHeaders
 
 from .conftest import real_file
 
@@ -199,10 +199,10 @@ def test_cbd_sum_columns_present_only_in_cleaned_files():
 def test_cbd_gti_schema_detected_from_the_extension():
     """The two variants carry different STDGTI schemas; the reader picks the
     header template by inspecting the extension, not the filename."""
-    assert isinstance(_open_cbd(CBD_UF).headers, CbdUnfilteredHeaders)
+    assert isinstance(_open_cbd(CBD_UF).headers, CBDUnfilteredHeaders)
     cl_headers = _open_cbd(CBD_CL).headers
-    assert isinstance(cl_headers, CbdHeaders)
-    assert not isinstance(cl_headers, CbdUnfilteredHeaders)
+    assert isinstance(cl_headers, CBDHeaders)
+    assert not isinstance(cl_headers, CBDUnfilteredHeaders)
 
 
 def test_cbd_energy_axis_is_per_detector_caldb():

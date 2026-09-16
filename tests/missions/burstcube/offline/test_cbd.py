@@ -18,7 +18,7 @@ import pytest
 from gdt.core.binning.binned import combine_by_factor
 
 from gdt.missions.burstcube.cbd import BurstCubeCBD
-from gdt.missions.burstcube.headers import CbdHeaders, CbdUnfilteredHeaders
+from gdt.missions.burstcube.headers import CBDHeaders, CBDUnfilteredHeaders
 
 from .conftest import TIMEDEL_CBD, make_cbd_fits
 
@@ -159,7 +159,7 @@ def test_cbd_gti_schema_uf_variant_has_extra_columns(tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter('error')
         cbd = BurstCubeCBD.open(path)
-    assert isinstance(cbd.headers, CbdUnfilteredHeaders)
+    assert isinstance(cbd.headers, CBDUnfilteredHeaders)
     assert cbd.gti.num_intervals == 1
 
 
@@ -171,8 +171,8 @@ def test_cbd_gti_schema_cl_variant_uses_standard_headers(tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter('error')
         cbd = BurstCubeCBD.open(path)
-    assert isinstance(cbd.headers, CbdHeaders)
-    assert not isinstance(cbd.headers, CbdUnfilteredHeaders)
+    assert isinstance(cbd.headers, CBDHeaders)
+    assert not isinstance(cbd.headers, CBDUnfilteredHeaders)
 
 
 def test_bin_edges_snap_only_float_noise_not_real_short_bins(tmp_path):

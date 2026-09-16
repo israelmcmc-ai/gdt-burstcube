@@ -24,7 +24,7 @@ from astropy.timeseries import TimeSeries
 
 from gdt.core.file import FitsFileContextManager
 
-from .headers import DetectorHkHeaders
+from .headers import DetectorHKHeaders
 from .time import Time
 
 __all__ = ['BurstCubeHK']
@@ -65,7 +65,7 @@ class BurstCubeHK(FitsFileContextManager):
         """
         obj = super().open(file_path, **kwargs)
         hdrs = [hdu.header for hdu in obj.hdulist]
-        obj._headers = DetectorHkHeaders.from_headers(hdrs)
+        obj._headers = DetectorHKHeaders.from_headers(hdrs)
         return obj
 
     def trig_enabled(self, detector=None):

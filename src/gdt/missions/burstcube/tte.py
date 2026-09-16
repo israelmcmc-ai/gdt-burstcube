@@ -42,7 +42,7 @@ from gdt.core.tte import PhotonList
 from gdt.core.data_primitives import Gti, EventList
 
 from . import caldb
-from .headers import TteHeaders
+from .headers import TTEHeaders
 
 __all__ = ['BurstCubeTTE']
 
@@ -140,7 +140,7 @@ class BurstCubeTTE(PhotonList):
         obj = super().open(file_path, **kwargs)
 
         hdrs = [hdu.header for hdu in obj.hdulist]
-        headers = TteHeaders.from_headers(hdrs)
+        headers = TTEHeaders.from_headers(hdrs)
 
         events_idx = obj.hdu_index_from_name('EVENTS')
         gti_idx = obj.hdu_index_from_name('STDGTI')
@@ -197,7 +197,7 @@ class BurstCubeTTE(PhotonList):
 
         Args:
             events_header (:class:`~gdt.core.headers.Header`): The EVENTS
-                header, after :class:`~.headers.TteHeaders` coercion (so
+                header, after :class:`~.headers.TTEHeaders` coercion (so
                 TSTART/TSTOP are floats here even if stored as strings on
                 disk).
         """

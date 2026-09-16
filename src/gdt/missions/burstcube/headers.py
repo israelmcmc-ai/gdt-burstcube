@@ -27,8 +27,8 @@ from gdt.core.headers import FileHeaders, Header
 
 from .time import Time
 
-__all__ = ['AttitudeHeaders', 'BurstCubeFileHeaders', 'CbdHeaders', 'CbdUnfilteredHeaders', 'DetectorHkHeaders', 'GtiHeaders',
-          'OrbitHeaders', 'RspHeaders', 'TteHeaders']
+__all__ = ['AttitudeHeaders', 'BurstCubeFileHeaders', 'CBDHeaders', 'CBDUnfilteredHeaders', 'DetectorHKHeaders', 'GtiHeaders',
+          'OrbitHeaders', 'RspHeaders', 'TTEHeaders']
 
 # mission definitions
 _telescope = 'BURSTCUBE'
@@ -186,7 +186,7 @@ class AttitudePrimaryHeader(BurstCubeHeader):
                 _date_end_card, _origin_card, Header.creator()]
 
 
-class CbdDataHeader(BurstCubeHeader):
+class CBDDataHeader(BurstCubeHeader):
     """Header for the ``CBD`` extension. ``TIMEPIXR=1`` means the ``TIME``
     column is the *end* of each 0.256 s bin, not the start; getting this
     backwards shifts every light curve by one bin width.
@@ -209,7 +209,7 @@ class CbdDataHeader(BurstCubeHeader):
                + [_date_card]
 
 
-class CbdGtiHeader(BurstCubeHeader):
+class CBDGtiHeader(BurstCubeHeader):
     """Header for the ``STDGTI`` extension of a *cleaned* (``_cl``) CBD file:
     the 2-column ``START``/``STOP`` OGIP standard form, carrying
     ``HDUCLAS2='STANDARD'``, ``HDUVERS`` and ``TIMEZERO``.
@@ -220,7 +220,7 @@ class CbdGtiHeader(BurstCubeHeader):
         (``START``, ``STOP``, ``START_ORIGINAL_TIME``,
         ``START_TIME_SYST_ERROR``, ``STOP_ORIGINAL_TIME``,
         ``STOP_TIME_SYST_ERROR``) with ``HDUCLAS1='GTI'`` and none of the
-        three keywords above -- see :class:`TteGtiHeader`. Because nothing in
+        three keywords above -- see :class:`TTEGtiHeader`. Because nothing in
         the files guarantees this correlation holds for every observation,
         :meth:`~gdt.missions.burstcube.cbd.BurstCubeCBD.open` selects between
         the two by inspecting the extension itself rather than by the
@@ -277,9 +277,9 @@ class EventsHeader(BurstCubeHeader):
                + [_date_card]
 
 
-class TteGtiHeader(BurstCubeHeader):
+class TTEGtiHeader(BurstCubeHeader):
     """Header for the ``STDGTI`` extension of a TTE file. Unlike
-    :class:`CbdGtiHeader`, its columns are ``START``, ``STOP``,
+    :class:`CBDGtiHeader`, its columns are ``START``, ``STOP``,
     ``START_ORIGINAL_TIME``, ``START_TIME_SYST_ERROR``,
     ``STOP_ORIGINAL_TIME``, ``STOP_TIME_SYST_ERROR``, and its header carries
     only ``HDUCLAS1`` (no ``HDUCLAS2``, ``HDUVERS``, or ``TIMEZERO``).
@@ -323,7 +323,7 @@ class AttitudeDataHeader(BurstCubeHeader):
                 _seqpnum_card]
 
 
-class DetectorHkHeader(BurstCubeHeader):
+class DetectorHKHeader(BurstCubeHeader):
     """Shared header shape for the ``DETECTOR_HK1`` and ``DETECTOR_HK2``
     extensions, which differ only in ``EXTNAME`` and ``TIMEDEL`` (1 s for
     HK1, 60 s for HK2). ``INSTRUME`` is always ``'CSA'``.
@@ -339,17 +339,17 @@ class DetectorHkHeader(BurstCubeHeader):
                + [_date_card]
 
 
-class DetectorHk1Header(DetectorHkHeader):
+class DetectorHK1Header(DetectorHKHeader):
     """Header for the ``DETECTOR_HK1`` extension (1 s cadence)."""
     name = 'DETECTOR_HK1'
-    keywords = DetectorHkHeader.keywords.copy()
+    keywords = DetectorHKHeader.keywords.copy()
 
 
-class DetectorHk2Header(DetectorHkHeader):
+class DetectorHK2Header(DetectorHKHeader):
     """Header for the ``DETECTOR_HK2`` extension (60 s cadence)."""
     name = 'DETECTOR_HK2'
     keywords = [kw if kw[0] != 'TIMEDEL' else ('TIMEDEL', 60.0, 'Integration time')
-               for kw in DetectorHkHeader.keywords]
+               for kw in DetectorHKHeader.keywords]
 
 
 class GtiTrendPrimaryHeader(BurstCubeHeader):
@@ -378,8 +378,8 @@ class GtiTrendDataHeader(BurstCubeHeader):
 
     Note:
         ``HDUVERS`` and ``TIMEZERO`` appear on some trend GTI variants (e.g.
-        ``trend/gti_saa``, matching :class:`CbdGtiHeader`) but not others
-        (e.g. ``trend/gti_binning``), so, unlike :class:`CbdGtiHeader`, they
+        ``trend/gti_saa``, matching :class:`CBDGtiHeader`) but not others
+        (e.g. ``trend/gti_binning``), so, unlike :class:`CBDGtiHeader`, they
         are not included here.
     """
     name = 'STDGTI'
@@ -394,25 +394,25 @@ class GtiTrendDataHeader(BurstCubeHeader):
 
 #-------------------------------------
 
-class CbdHeaders(BurstCubeFileHeaders):
+class CBDHeaders(BurstCubeFileHeaders):
     """FITS headers for a CBD file whose ``STDGTI`` uses the 2-column
     standard schema (in practice, the cleaned ``_cl`` files)."""
-    _header_templates = [DataPrimaryHeader(), CbdDataHeader(), CbdGtiHeader()]
+    _header_templates = [DataPrimaryHeader(), CBDDataHeader(), CBDGtiHeader()]
 
 
-class CbdUnfilteredHeaders(BurstCubeFileHeaders):
+class CBDUnfilteredHeaders(BurstCubeFileHeaders):
     """FITS headers for a CBD file whose ``STDGTI`` uses the 6-column schema
     shared with TTE (in practice, the unfiltered ``_uf`` files).
 
-    Identical to :class:`CbdHeaders` apart from the GTI extension. See the
-    note on :class:`CbdGtiHeader`.
+    Identical to :class:`CBDHeaders` apart from the GTI extension. See the
+    note on :class:`CBDGtiHeader`.
     """
-    _header_templates = [DataPrimaryHeader(), CbdDataHeader(), TteGtiHeader()]
+    _header_templates = [DataPrimaryHeader(), CBDDataHeader(), TTEGtiHeader()]
 
 
-class TteHeaders(BurstCubeFileHeaders):
+class TTEHeaders(BurstCubeFileHeaders):
     """FITS headers for TTE (time-tagged event) files."""
-    _header_templates = [DataPrimaryHeader(), EventsHeader(), TteGtiHeader()]
+    _header_templates = [DataPrimaryHeader(), EventsHeader(), TTEGtiHeader()]
 
 
 class OrbitHeaders(BurstCubeFileHeaders):
@@ -425,12 +425,12 @@ class AttitudeHeaders(BurstCubeFileHeaders):
     _header_templates = [AttitudePrimaryHeader(), AttitudeDataHeader()]
 
 
-class DetectorHkHeaders(BurstCubeFileHeaders):
+class DetectorHKHeaders(BurstCubeFileHeaders):
     """FITS headers for the detector housekeeping file
     (``auxil/bcYYMMDDcsa.hk.gz``).
     """
-    _header_templates = [AuxPrimaryHeader(), DetectorHk1Header(),
-                         DetectorHk2Header()]
+    _header_templates = [AuxPrimaryHeader(), DetectorHK1Header(),
+                         DetectorHK2Header()]
 
 
 class GtiHeaders(BurstCubeFileHeaders):

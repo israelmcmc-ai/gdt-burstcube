@@ -20,11 +20,11 @@ from gdt.missions.burstcube import headers as h
 
 
 @pytest.mark.parametrize('cls, expected_extensions', [
-    (h.CbdHeaders, ['PRIMARY', 'CBD', 'STDGTI']),
-    (h.TteHeaders, ['PRIMARY', 'EVENTS', 'STDGTI']),
+    (h.CBDHeaders, ['PRIMARY', 'CBD', 'STDGTI']),
+    (h.TTEHeaders, ['PRIMARY', 'EVENTS', 'STDGTI']),
     (h.OrbitHeaders, ['PRIMARY', 'ORBIT']),
     (h.AttitudeHeaders, ['PRIMARY', 'ATTITUDE']),
-    (h.DetectorHkHeaders, ['PRIMARY', 'DETECTOR_HK1', 'DETECTOR_HK2']),
+    (h.DetectorHKHeaders, ['PRIMARY', 'DETECTOR_HK1', 'DETECTOR_HK2']),
     (h.GtiHeaders, ['PRIMARY', 'STDGTI']),
 ])
 def test_file_headers_construct_with_expected_extensions(cls, expected_extensions):
@@ -39,7 +39,7 @@ def test_cbd_carries_burstcube_specific_keywords_gbm_lacks():
     """CBD must carry PROCVER, CALDBVER, SEQPNUM, and the TIMEPIXR/TIMEDEL
     pair, none of which GBM's headers need.
     """
-    obj = h.CbdHeaders()
+    obj = h.CBDHeaders()
     for keyword in ('PROCVER', 'CALDBVER', 'SEQPNUM', 'TIMEPIXR', 'TIMEDEL'):
         assert keyword in obj['CBD']
 
@@ -48,7 +48,7 @@ def test_cbd_timepixr_defaults_to_end_of_bin():
     """TIMEPIXR must default to 1 (end of bin), matching every real CBD
     file; getting this wrong silently shifts every light curve.
     """
-    obj = h.CbdHeaders()
+    obj = h.CBDHeaders()
     assert obj['CBD']['TIMEPIXR'] == 1
 
 
@@ -57,7 +57,7 @@ def test_tstart_sync_updates_date_obs():
     DATE-OBS to the corresponding BurstCube MET, matching the MET-to-UTC
     reference value used in test_time.py.
     """
-    obj = h.CbdHeaders()
+    obj = h.CBDHeaders()
     obj['CBD']['TSTART'] = 107629263.33
     assert obj['CBD']['DATE-OBS'] == '2024-05-30T17:01:03.330'
 
@@ -70,7 +70,7 @@ def test_tstart_sync_does_not_crash_on_numeric_string_tstart():
     confusing) MET the string encodes, since the underlying gdt.core.headers
     coercion accepts anything float() accepts.
     """
-    obj = h.TteHeaders()
+    obj = h.TTEHeaders()
     obj['EVENTS']['TSTART'] = '107629534.257'  # must not raise
     assert obj['EVENTS']['TSTART'] == pytest.approx(107629534.257)
     assert obj['EVENTS']['DATE-OBS'].startswith('2024-05-30T17:05:34')
@@ -82,7 +82,7 @@ def test_tstart_sync_leaves_date_obs_untouched_on_unparseable_value():
     that is the framework's normal, expected strictness and is unrelated to
     the DATE-OBS sync, which only ever best-effort *adds to* that behavior.
     """
-    obj = h.TteHeaders()
+    obj = h.TTEHeaders()
     with pytest.raises(TypeError):
         obj['EVENTS']['TSTART'] = 'not-a-number'
 
