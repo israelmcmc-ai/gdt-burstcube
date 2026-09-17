@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""Minimal reproduction of the README caveat *TTE stops writing while the
-detector keeps counting*.
+"""Minimal reproduction of the README caveat *TTE gaps*.
 
 BurstCube TTE covers its nominal span in short recording blocks separated by
 gaps of comparable length. Across a gap the event list is empty, so a

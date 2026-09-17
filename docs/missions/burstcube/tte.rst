@@ -40,9 +40,8 @@ blocks as a :class:`~gdt.core.data_primitives.Gti`, and
     >>> tte.time_range[1] - tte.time_range[0]                  # elapsed span
     295.07...
 
-See the README caveat *TTE stops writing while the detector keeps counting*,
-and ``examples/tte_gaps_vs_cbd.py``, for the measurement that establishes
-the gaps are not quiet sky.
+See the README caveat *TTE gaps*, and ``examples/tte_gaps_vs_cbd.py``, for
+the measurement behind this.
 
 Reference/API
 =============

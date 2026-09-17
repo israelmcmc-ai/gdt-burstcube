@@ -52,4 +52,4 @@ they need and reproduce one specific result:
 
 * ``examples/tte_gaps_vs_cbd.py`` -- plots TTE's recording gaps against the
   CBD rate over the same interval, the minimal reproduction of the README
-  caveat *TTE stops writing while the detector keeps counting*.
+  caveat *TTE gaps*.

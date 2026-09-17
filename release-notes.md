@@ -20,7 +20,7 @@ Initial package foundation.
   file actually recorded over as a `Gti`. TTE covers its nominal span in short
   blocks separated by gaps of comparable length, and reads zero across a gap
   while the detector keeps counting, so any rate taken over an interval that
-  spans a gap is diluted. See the README caveat and
+  spans a gap is diluted. See the README's *TTE gaps* caveat and
   `examples/tte_gaps_vs_cbd.py`.
 - Licensed under MIT, matching the BurstCube team's `bctools`. Per-file license
   headers are gone; `LICENSE` and `NOTICE` carry the terms and the attribution

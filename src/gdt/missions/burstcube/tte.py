@@ -120,9 +120,9 @@ class BurstCubeTTE(PhotonList):
         TTE does not cover its nominal span continuously: event times arrive
         in short blocks separated by gaps of comparable length, and across a
         gap the event list is simply empty while the detector keeps counting
-        at its normal rate. See the README caveat *TTE stops writing while
-        the detector keeps counting*; ``examples/tte_gaps_vs_cbd.py``
-        reproduces the measurement behind it.
+        at its normal rate. See the README caveat *TTE gaps*;
+        ``examples/tte_gaps_vs_cbd.py`` reproduces the measurement behind
+        it.
 
         Every rate derived from TTE needs these blocks, because dividing a
         count by an elapsed duration that spans a gap dilutes the rate by

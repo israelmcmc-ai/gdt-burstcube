@@ -352,8 +352,8 @@ def test_detector_hk_exposes_thresholds_and_enable_flags():
 
 
 def test_tte_recording_blocks_are_gaps_the_detector_kept_counting_through():
-    """The README caveat *TTE stops writing while the detector keeps
-    counting*, as a test. On 240814 CS0, TTE arrives in ~94 short blocks;
+    """The README caveat *TTE gaps*, as a test. On 240814 CS0, TTE arrives
+    in ~94 short blocks;
     CBD counts at the same rate inside the gaps as inside the blocks, while
     TTE records nothing at all across roughly 100 s of them.
 
