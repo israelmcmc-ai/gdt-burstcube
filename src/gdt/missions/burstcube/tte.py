@@ -119,8 +119,10 @@ class BurstCubeTTE(PhotonList):
 
         TTE does not cover its nominal span continuously: event times arrive
         in short blocks separated by gaps of comparable length, and across a
-        gap the event list is simply empty while the detector keeps counting
-        at its normal rate. See the README caveat *TTE gaps*;
+        gap the event list is simply empty. CBD -- the same detector and the
+        same event stream, binned on board rather than written out event by
+        event -- counts at its normal rate through those gaps, which is how
+        we know they are not quiet sky. See the README caveat *TTE gaps*;
         ``examples/tte_gaps_vs_cbd.py`` reproduces the measurement behind
         it.
 

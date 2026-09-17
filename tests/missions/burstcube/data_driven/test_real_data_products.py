@@ -18,7 +18,8 @@ import pytest
 from astropy.io import fits
 
 from gdt.core.binning.binned import combine_by_factor
-from gdt.core.binning.unbinned import bin_by_time
+from gdt.core.binning.unbinned import bin_by_edges, bin_by_time
+from gdt.core.phaii import Phaii
 
 from gdt.missions.burstcube.cbd import BurstCubeCBD
 from gdt.missions.burstcube.gti import BurstCubeGti, complement, intersect
@@ -351,59 +352,79 @@ def test_detector_hk_exposes_thresholds_and_enable_flags():
     assert set(np.unique(flags)).issubset({0, 1})
 
 
-def test_tte_recording_blocks_are_gaps_the_detector_kept_counting_through():
-    """The README caveat *TTE gaps*, as a test. On 240814 CS0, TTE arrives
-    in ~94 short blocks;
-    CBD counts at the same rate inside the gaps as inside the blocks, while
-    TTE records nothing at all across roughly 100 s of them.
+def test_tte_recording_blocks_are_gaps_cbd_kept_counting_through():
+    """The README caveat *TTE gaps*, as a test. On 240814 CS0, TTE arrives in
+    ~94 short blocks, and across the gaps between them it records nothing at
+    all over roughly 100 s while CBD -- the same detector and the same event
+    stream, binned on board -- counts at its usual rate.
 
-    This is the measurement the caveat and
-    ``examples/tte_gaps_vs_cbd.py`` report, so it is pinned here: if the
-    archive is ever reprocessed to fill the gaps, this test is how we find
-    out.
+    TTE is binned on the CBD file's own bin edges, so each pair of bins
+    covers exactly the same interval and no rate scaling is involved.
+
+    This pins the measurement the caveat and
+    ``examples/tte_gaps_vs_cbd.py`` report: if the archive is ever
+    reprocessed to fill the gaps, this test is how we find out.
     """
     cbd = _open_cbd(CBD_CL_240814)
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')      # the known broken TSTART/TSTOP
         tte = BurstCubeTTE.open(real_file(TTE_240814))
 
+    tstart, tstop = tte.time_range
     blocks = tte.recording_blocks()
-    gaps = complement(blocks, *tte.time_range)
+    gaps = complement(blocks, tstart, tstop)
     assert blocks.num_intervals == gaps.num_intervals + 1
 
     live = sum(stop - start for start, stop in blocks.as_list())
-    span = tte.time_range[1] - tte.time_range[0]
-    assert live < 0.5 * span            # less than half the span is live
+    assert live < 0.5 * (tstop - tstart)     # less than half the span is live
 
-    data = cbd.data
-    times = np.sort(tte.data.times)
+    data = cbd.slice_time([(tstart, tstop)]).data
+    edges = np.append(data.tstart, data.tstop[-1])
+    tte_binned = tte.to_phaii(bin_by_edges, edges, phaii_class=Phaii)
+    assert tte_binned.data.counts.sum() == tte.data.size
+
     cbd_counts = data.counts.sum(axis=1)
-    # TTE events per CBD bin, so both instruments are measured over exactly
-    # the same intervals and no rate scaling is involved. Half-open,
-    # [tstart, tstop): CBD bins are contiguous, and one real event lands
-    # exactly on a shared edge.
-    tte_counts = (np.searchsorted(times, data.tstop, 'left')
-                  - np.searchsorted(times, data.tstart, 'left'))
+    tte_counts = tte_binned.data.counts.sum(axis=1)
+    # _cl drops intervals, so a couple of CBD bin boundaries are not
+    # contiguous and the bins spanning them are not like-for-like pairs
+    straddles_a_cbd_gap = np.append(data.tstart[1:] - data.tstop[:-1] > 1e-9,
+                                    False)
 
-    rates = {}
-    for label, gti in (('block', blocks), ('gap', gaps)):
-        # only bins lying entirely inside an interval, so the two samples are
-        # disjoint and each bin's own exposure is exact
+    def bins_inside(gti):
+        """Bins lying entirely inside one interval of `gti`, so the block and
+        gap samples are disjoint and each bin's own exposure is exact."""
         mask = np.zeros(data.tstart.size, dtype=bool)
-        for start, stop in gti.as_list():
-            mask |= (data.tstart >= start) & (data.tstop <= stop)
-        exposure = data.exposure[mask].sum()
-        assert exposure > 50.0           # enough of each to mean anything
-        rates[label] = (cbd_counts[mask].sum() / exposure,
-                        tte_counts[mask].sum() / exposure, exposure)
+        for low, high in gti.as_list():
+            mask |= (data.tstart >= low) & (data.tstop <= high)
+        return mask & ~straddles_a_cbd_gap
 
-    cbd_in_block, tte_in_block, _ = rates['block']
-    cbd_in_gap, tte_in_gap, gap_exposure = rates['gap']
+    in_block, in_gap = bins_inside(blocks), bins_inside(gaps)
+    block_exposure = data.exposure[in_block].sum()
+    gap_exposure = data.exposure[in_gap].sum()
+    assert block_exposure > 50.0         # enough of each to mean anything
+    assert gap_exposure > 50.0
 
-    # inside a block the two instruments agree to a few percent
-    assert cbd_in_block / tte_in_block == pytest.approx(1.0, abs=0.1)
-    # inside a gap TTE is empty while CBD is unchanged
-    assert tte_in_gap == 0.0
+    # across the gaps TTE is empty -- not low, empty -- while CBD is
+    # unchanged, and that is a lot of counts TTE never wrote
+    assert tte_counts[in_gap].sum() == 0
+    cbd_in_gap = cbd_counts[in_gap].sum() / gap_exposure
+    cbd_in_block = cbd_counts[in_block].sum() / block_exposure
     assert cbd_in_gap / cbd_in_block == pytest.approx(1.0, abs=0.2)
-    # and that is a lot of counts TTE never wrote
-    assert tte_in_block * gap_exposure > 1e4
+    assert cbd_in_gap * gap_exposure > 1e4
+
+    # inside the blocks the deficit is confined to the brightest bins: below
+    # 200 ct/s the two agree to well under a percent, above it TTE is short
+    cbd_rate = cbd_counts / data.exposure
+    quiet = in_block & (cbd_rate < 200.0)
+    bright = in_block & (cbd_rate >= 200.0)
+    assert data.exposure[quiet].sum() > 50.0
+    assert data.exposure[bright].sum() > 1.0
+
+    assert (cbd_counts[quiet].sum() / tte_counts[quiet].sum()
+            == pytest.approx(1.0, abs=0.01))
+    assert cbd_counts[bright].sum() / tte_counts[bright].sum() > 1.03
+
+    # and the whole in-block deficit lives in those bright bins
+    deficit = cbd_counts[in_block].sum() - tte_counts[in_block].sum()
+    bright_deficit = cbd_counts[bright].sum() - tte_counts[bright].sum()
+    assert bright_deficit >= deficit

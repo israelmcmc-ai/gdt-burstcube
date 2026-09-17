@@ -181,17 +181,19 @@ short **recording blocks** separated by gaps of comparable length, and
 across a gap the event list is simply empty. A TTE-only light curve
 therefore reads zero over much of the span. This likely is due to dropped TTE packets.
 
-CBD watches the same detector continuously. On 2024-08-14, detector ``CS0``,
-splitting the event times wherever the gap
-to the next event exceeds 0.5 s gives 94 blocks and 93 gaps. Taking only the
-**cleaned** (``_cl``) CBD bins that fall entirely inside one block, or
-entirely inside one gap, so the two samples are disjoint and every bin's own
-exposure is exact:
+CBD is the same detector and the same event stream -- binned on board
+rather than written out event by event -- so it is the reference for what
+TTE should have contained, and it runs continuously through the gaps. On
+2024-08-14, detector ``CS0``, splitting the event times wherever the gap
+to the next event exceeds 0.5 s gives 94 blocks and 93 gaps. Binning TTE on
+the **cleaned** (``_cl``) CBD file's *own* bin edges, and keeping the bins
+that fall entirely inside one block or entirely inside one gap, so the two
+samples are disjoint and each bin is the same 0.256 s interval for both:
 
 .. code-block::
 
    inside a TTE block   284 bins    72.70 s   CBD 121.9 ct/s   TTE 118.3 ct/s
-   inside a TTE gap     396 bins   101.38 s   CBD 131.4 ct/s   TTE   0.0 ct/s
+   inside a TTE gap     395 bins   101.12 s   CBD 131.3 ct/s   TTE   0.0 ct/s
 
 .. image:: docs/_static/tte_gaps_vs_cbd.png
    :alt: CBD and TTE light curves for CS0 on 2024-08-14, with the TTE
@@ -201,13 +203,32 @@ exposure is exact:
 
 The figure is the output of ``examples/tte_gaps_vs_cbd.py``: the top two
 panels are the full 224 s span with the 93 gaps shaded, and the bottom panel
-overlays the first 20 s so the two can be read bin by bin. TTE falls to
-exactly zero on every shaded interval; CBD does not.
+overlays the first 20 s. Both panels are on CBD's bin edges, so they can be
+read against each other bin for bin. TTE is zero in every bin that lies
+inside a shaded interval; CBD is not.
 
-Inside the blocks the two instruments agree to 3%. Inside the gaps CBD
-counts at the *same* rate -- slightly higher, if anything -- while TTE
-records nothing at all over 101 s. At TTE's own in-block rate those 101 s
-should have held roughly twelve thousand events.
+Inside the gaps CBD counts at the *same* rate as inside the blocks --
+slightly higher, if anything -- while TTE records nothing at all over 101 s.
+At TTE's own in-block rate those 101 s should have held roughly twelve
+thousand events.
+
+Inside the blocks the totals differ by 3% (121.9 against 118.3 ct/s), and
+that residual is **not** a binning artifact: the bins above are already
+CBD's own, so there are no edges to align. It is the same loss as the gaps,
+seen at a finer grain. Split the in-block bins by their CBD rate:
+
+.. code-block::
+
+       0-100  ct/s   126 bins  32.26 s   CBD  2650   TTE  2652   ratio 0.9992 +/- 0.0274
+     100-200  ct/s   123 bins  31.49 s   CBD  3858   TTE  3861   ratio 0.9992 +/- 0.0227
+     200-300  ct/s    29 bins   7.42 s   CBD  1837   TTE  1718   ratio 1.0693 +/- 0.0359
+     300-inf  ct/s     6 bins   1.54 s   CBD   515   TTE   369   ratio 1.3957 +/- 0.0952
+
+Below 200 ct/s the two agree to 0.08%, which is as close as the counting
+statistics can resolve. All 260 counts of the deficit come from the 35 bins
+above 200 ct/s, which are 9 s of the 73 s. So TTE loses events in the
+brightest bins as well as losing whole blocks, and a TTE light curve
+understates a bright interval even where it is recording.
 
 The instrument housekeeping, however, reports ``TTE_ENABLED = 1`` at every sample spanning the
 window, so it is not a simple capture on/off -- though at the 30 s

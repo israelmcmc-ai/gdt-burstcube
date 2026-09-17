@@ -27,8 +27,9 @@ selection, rebinning, light curves, and count spectra -- including the
 caveats that bite in practice: bin-end (``TIMEPIXR=1``) timestamps, the
 ``TIME_SYST_ERROR`` column, the mid-mission energy threshold change, and a
 real rebinning failure caused by genuine 1 ms-short bins in the archive data.
-It also compares TTE against CBD on day 240814, interval for interval, which
-is where the TTE recording gaps show up.
+It also compares TTE against CBD on day 240814 -- binned on CBD's own bin
+edges, in time and in energy, plus the same events at TTE's native 1024
+channels -- which is where the TTE recording gaps show up.
 
 **2. Detector Response** -- the HEALPix response grid (nside=16, spacecraft
 coordinates), downloading only the pixels needed for one direction,
