@@ -173,17 +173,16 @@ Its caveat #4 concerns how few TTE files were downlinked, and caveat #5 the
 also says 34 TTE files of 100 s duration were downlinked, where the archive
 holds 28 files whose durations run from 65 s to 3179 s.)
 
-TTE stops writing while the detector keeps counting
--------------------------------------------------------------
+TTE gaps
+--------
 
 TTE does not cover its nominal span continuously. Event times arrive in
 short **recording blocks** separated by gaps of comparable length, and
 across a gap the event list is simply empty. A TTE-only light curve
-therefore reads zero over much of the span, and nothing in the file
-distinguishes "the sky was quiet" from "TTE wrote nothing".
+therefore reads zero over much of the span. This likely is due to dropped TTE packets.
 
-CBD watches the same detector continuously, so it can tell the two apart.
-On 2024-08-14, detector ``CS0``, splitting the event times wherever the gap
+CBD watches the same detector continuously. On 2024-08-14, detector ``CS0``,
+splitting the event times wherever the gap
 to the next event exceeds 0.5 s gives 94 blocks and 93 gaps. Taking only the
 **cleaned** (``_cl``) CBD bins that fall entirely inside one block, or
 entirely inside one gap, so the two samples are disjoint and every bin's own
@@ -208,26 +207,12 @@ exactly zero on every shaded interval; CBD does not.
 Inside the blocks the two instruments agree to 3%. Inside the gaps CBD
 counts at the *same* rate -- slightly higher, if anything -- while TTE
 records nothing at all over 101 s. At TTE's own in-block rate those 101 s
-should have held roughly twelve thousand events. **The gaps are not quiet
-sky: the detector was still seeing photons at its normal rate while TTE
-wrote nothing.**
+should have held roughly twelve thousand events.
 
-Why it wrote nothing is not something the archive answers. The instrument
-housekeeping reports ``TTE_ENABLED = 1`` at every sample spanning the
+The instrument housekeeping, however, reports ``TTE_ENABLED = 1`` at every sample spanning the
 window, so it is not a simple capture on/off -- though at the 30 s
 ``DETECTOR_HK1`` cadence that flag cannot resolve blocks and gaps that are
-themselves around a second long. This plugin makes no claim about the
-mechanism; it reports what the files show.
-
-*What this means for analysis.* Never divide a TTE count by an elapsed
-duration that spans a gap, and never use a zero-rate stretch of TTE as a
-background estimate -- both will be wrong by roughly the ratio of live time
-to elapsed time (here 97 s out of 224 s, a factor of 2.3). Instead find the
-recording blocks from the event times themselves and work inside them. When
-comparing TTE against CBD, restrict to CBD bins lying entirely inside a
-block, which makes the exposures identical and removes the need for any
-rate scaling; done that way the two agree to a few percent with no trend in
-energy.
+themselves around a second long.
 
 ``BurstCubeTTE.recording_blocks()`` finds the blocks for you and returns
 them as a ``Gti``; the gaps are then
@@ -237,8 +222,6 @@ the notebook ``docs/notebooks/1_data_types_and_binning.ipynb`` works the
 same data through the plugin's binning API.
 
 This problem is **not** described in the official caveats document either.
-Caveat #4 covers how few TTE files were downlinked, but says nothing about
-the coverage *within* a file.
 
 Timeline UTC column is 37 seconds off its own MET column
 -------------------------------------------------------------
