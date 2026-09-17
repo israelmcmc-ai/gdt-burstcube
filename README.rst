@@ -191,8 +191,19 @@ exposure is exact:
 
 .. code-block::
 
-   inside a TTE block   284 bins    72.70 s   CBD 121.9 ct/s   TTE 118.7 ct/s
+   inside a TTE block   284 bins    72.70 s   CBD 121.9 ct/s   TTE 118.3 ct/s
    inside a TTE gap     396 bins   101.38 s   CBD 131.4 ct/s   TTE   0.0 ct/s
+
+.. image:: docs/_static/tte_gaps_vs_cbd.png
+   :alt: CBD and TTE light curves for CS0 on 2024-08-14, with the TTE
+         recording gaps shaded. TTE reads exactly zero in every shaded
+         interval while CBD continues at its normal rate.
+   :width: 100%
+
+The figure is the output of ``examples/tte_gaps_vs_cbd.py``: the top two
+panels are the full 224 s span with the 93 gaps shaded, and the bottom panel
+overlays the first 20 s so the two can be read bin by bin. TTE falls to
+exactly zero on every shaded interval; CBD does not.
 
 Inside the blocks the two instruments agree to 3%. Inside the gaps CBD
 counts at the *same* rate -- slightly higher, if anything -- while TTE
@@ -218,10 +229,12 @@ block, which makes the exposures identical and removes the need for any
 rate scaling; done that way the two agree to a few percent with no trend in
 energy.
 
-``examples/tte_gaps_vs_cbd.py`` is a self-contained script that downloads
-the CBD and TTE files and plots exactly the comparison above; the
-notebook ``docs/notebooks/1_data_types_and_binning.ipynb`` works the same
-data through the plugin's binning API.
+``BurstCubeTTE.recording_blocks()`` finds the blocks for you and returns
+them as a ``Gti``; the gaps are then
+``gdt.missions.burstcube.gti.complement(blocks, *tte.time_range)``. The
+script above is self-contained -- it downloads the two files it needs -- and
+the notebook ``docs/notebooks/1_data_types_and_binning.ipynb`` works the
+same data through the plugin's binning API.
 
 This problem is **not** described in the official caveats document either.
 Caveat #4 covers how few TTE files were downlinked, but says nothing about
@@ -334,3 +347,15 @@ To compile the documentation, use the following commands:
    cd gdt-burstcube/docs
    pip install -r requirements.txt
    make html
+
+
+License and Attribution
+-------------------------
+
+GDT-BurstCube is released under the MIT License (see ``LICENSE``), the same
+license the BurstCube team's own ``bctools`` uses.
+
+It builds on the Gamma-ray Data Tools Core package, which is Apache-2.0, and
+follows the conventions of the GDT-Fermi package. The attribution those
+authors ask for -- and the citations to use when publishing analysis done
+with GDT -- are in ``NOTICE``; keep that file with any derivative work.

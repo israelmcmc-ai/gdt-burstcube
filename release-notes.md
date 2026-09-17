@@ -16,3 +16,12 @@ Initial package foundation.
 - Added FITS header definitions for the CBD, TTE, orbit, attitude, and detector
   housekeeping products.
 - Bundled the 10 BurstCube CALDB files needed for offline operation (233,280 bytes).
+- Added `BurstCubeTTE.recording_blocks()`, which returns the intervals a TTE
+  file actually recorded over as a `Gti`. TTE covers its nominal span in short
+  blocks separated by gaps of comparable length, and reads zero across a gap
+  while the detector keeps counting, so any rate taken over an interval that
+  spans a gap is diluted. See the README caveat and
+  `examples/tte_gaps_vs_cbd.py`.
+- Licensed under MIT, matching the BurstCube team's `bctools`. Per-file license
+  headers are gone; `LICENSE` and `NOTICE` carry the terms and the attribution
+  owed to the GDT Core authors.

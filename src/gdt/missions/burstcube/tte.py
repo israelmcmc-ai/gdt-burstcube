@@ -1,15 +1,3 @@
-# Copyright 2024-2025 by the BurstCube Team.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-# in compliance with the License. You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software distributed under the License
-# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing permissions and limitations under the
-# License.
-#
 """BurstCube TTE (time-tagged event) data: a 1024-channel photon list for one
 detector, built from the archive's ``events/*_tte_uf.evt.gz`` files.
 
@@ -44,7 +32,11 @@ from gdt.core.data_primitives import Gti, EventList
 from . import caldb
 from .headers import TTEHeaders
 
-__all__ = ['BurstCubeTTE']
+__all__ = ['BurstCubeTTE', 'DEFAULT_GAP_THRESHOLD']
+
+#: The default gap threshold for :meth:`BurstCubeTTE.recording_blocks`,
+#: in seconds.
+DEFAULT_GAP_THRESHOLD = 0.5
 
 
 class BurstCubeTTE(PhotonList):
@@ -121,6 +113,53 @@ class BurstCubeTTE(PhotonList):
                               event_deadtime=self.event_deadtime,
                               overflow_deadtime=self.overflow_deadtime,
                               **kwargs)
+
+    def recording_blocks(self, gap_threshold=DEFAULT_GAP_THRESHOLD):
+        """The intervals over which this file actually recorded events.
+
+        TTE does not cover its nominal span continuously: event times arrive
+        in short blocks separated by gaps of comparable length, and across a
+        gap the event list is simply empty while the detector keeps counting
+        at its normal rate. See the README caveat *TTE stops writing while
+        the detector keeps counting*; ``examples/tte_gaps_vs_cbd.py``
+        reproduces the measurement behind it.
+
+        Every rate derived from TTE needs these blocks, because dividing a
+        count by an elapsed duration that spans a gap dilutes the rate by
+        the gap's share of that duration. On 2024-08-14 ``CS0`` the live
+        time is 97 s of a 224 s span, a factor of 2.3.
+
+        Each block runs from its first to its last event, so the returned
+        total is live time and not elapsed time. The gaps themselves are the
+        complement of the result over the file's time range, which
+        :func:`~gdt.missions.burstcube.gti.complement` will give you.
+
+        Args:
+            gap_threshold (float, optional): Start a new block wherever the
+                wait for the next event exceeds this, in seconds. The
+                default of 0.5 s sits far from both scales it separates --
+                in-block waits are milliseconds and real gaps are around a
+                second -- so the result is insensitive to the exact value.
+
+        Returns:
+            (:class:`~gdt.core.data_primitives.Gti`)
+
+        Raises:
+            ValueError: If there are no events, since there are no blocks to
+                report, or if ``gap_threshold`` is not positive.
+        """
+        if gap_threshold <= 0.0:
+            raise ValueError(f'gap_threshold must be positive, got {gap_threshold}')
+
+        times = np.sort(self.data.times)
+        if times.size == 0:
+            raise ValueError('There are no events, so there are no recording '
+                             'blocks.')
+
+        gap_idx = np.flatnonzero(np.diff(times) > gap_threshold)
+        starts = times[np.concatenate(([0], gap_idx + 1))]
+        stops = times[np.concatenate((gap_idx, [times.size - 1]))]
+        return Gti.from_bounds(starts, stops)
 
     @property
     def detector(self):

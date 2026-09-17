@@ -9,8 +9,8 @@ authors = [
 ]
 description = "Gamma-ray Data Tools: BurstCube Mission"
 readme = "PYPI-README.rst"
-license = "Apache-2.0"
-license-files = ["license.txt"]
+license = "MIT"
+license-files = ["LICENSE"]
 keywords = ['astronomy', 'gammaray', 'gamma-ray', 'burstcube']
 classifiers = [
     "Development Status :: 3 - Alpha",

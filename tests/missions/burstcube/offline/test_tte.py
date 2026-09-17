@@ -1,15 +1,3 @@
-# Copyright 2024-2025 by the BurstCube Team.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-# in compliance with the License. You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software distributed under the License
-# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing permissions and limitations under the
-# License.
-#
 """Offline tests for gdt.missions.burstcube.tte."""
 import warnings
 
@@ -18,6 +6,7 @@ import pytest
 from gdt.core.binning.unbinned import bin_by_time
 from gdt.core.phaii import Phaii
 
+from gdt.missions.burstcube.gti import complement
 from gdt.missions.burstcube.tte import BurstCubeTTE
 
 from .conftest import TIMEDEL_CBD, make_tte_fits
@@ -250,3 +239,96 @@ def test_slice_time_raises_when_no_range_contains_events(tmp_path):
     far = tte.time_range[1] + 1e6
     with pytest.raises(ValueError, match='contain any events'):
         tte.slice_time([(far, far + 10.0)])
+
+
+def test_recording_blocks_splits_on_gaps_and_reports_live_time(tmp_path):
+    """Three deliberate blocks separated by 2 s gaps, each block made of
+    events 10 ms apart. The blocks must come back exactly, and their total
+    must be live time -- strictly less than the elapsed span.
+    """
+    t0 = 107629263.0
+    times = np.concatenate([t0 + offset + np.arange(5) * 0.01
+                            for offset in (0.0, 2.0, 4.0)])
+    path = tmp_path / 'tte_blocks.fits'
+    make_tte_fits(path, times=times, broken_tstart_tstop=False)
+    tte = BurstCubeTTE.open(path)
+
+    blocks = tte.recording_blocks()
+    assert blocks.num_intervals == 3
+    np.testing.assert_allclose(
+        blocks.as_list(),
+        [(t0, t0 + 0.04), (t0 + 2.0, t0 + 2.04), (t0 + 4.0, t0 + 4.04)])
+
+    live = sum(stop - start for start, stop in blocks.as_list())
+    assert live == pytest.approx(0.12)
+    assert live < tte.time_range[1] - tte.time_range[0]
+
+
+def test_recording_blocks_gap_threshold_changes_the_split(tmp_path):
+    """A threshold above the inter-block spacing must coalesce everything
+    into one block; below the in-block spacing, every event is its own.
+    """
+    t0 = 107629263.0
+    times = np.concatenate([t0 + offset + np.arange(5) * 0.01
+                            for offset in (0.0, 2.0, 4.0)])
+    path = tmp_path / 'tte_blocks.fits'
+    make_tte_fits(path, times=times, broken_tstart_tstop=False)
+    tte = BurstCubeTTE.open(path)
+
+    assert tte.recording_blocks(gap_threshold=3.0).num_intervals == 1
+    assert tte.recording_blocks(gap_threshold=0.001).num_intervals == times.size
+
+
+def test_recording_blocks_complement_is_the_gaps(tmp_path):
+    """The gaps are the complement of the blocks over the file's time range,
+    which is how the README and the example script derive them.
+    """
+    t0 = 107629263.0
+    times = np.concatenate([t0 + offset + np.arange(5) * 0.01
+                            for offset in (0.0, 2.0, 4.0)])
+    path = tmp_path / 'tte_blocks.fits'
+    make_tte_fits(path, times=times, broken_tstart_tstop=False)
+    tte = BurstCubeTTE.open(path)
+
+    gaps = complement(tte.recording_blocks(), *tte.time_range)
+    assert gaps.num_intervals == 2
+    np.testing.assert_allclose(gaps.as_list(),
+                               [(t0 + 0.04, t0 + 2.0), (t0 + 2.04, t0 + 4.0)])
+
+
+def test_recording_blocks_is_one_block_when_events_are_contiguous(tmp_path):
+    path = tmp_path / 'tte.fits'
+    times, _ = make_tte_fits(path, broken_tstart_tstop=False)
+    tte = BurstCubeTTE.open(path)
+
+    blocks = tte.recording_blocks()
+    assert blocks.num_intervals == 1
+    assert blocks.range == pytest.approx((times.min(), times.max()))
+
+
+def test_recording_blocks_rejects_a_nonpositive_threshold(tmp_path):
+    path = tmp_path / 'tte.fits'
+    make_tte_fits(path, broken_tstart_tstop=False)
+    tte = BurstCubeTTE.open(path)
+
+    with pytest.raises(ValueError, match='must be positive'):
+        tte.recording_blocks(gap_threshold=0.0)
+
+
+def test_recording_blocks_is_unaffected_by_event_ordering(tmp_path):
+    """Real event times are sorted, but nothing in the reader guarantees it,
+    so the method must sort rather than trust the column order.
+    """
+    t0 = 107629263.0
+    ordered = np.concatenate([t0 + offset + np.arange(5) * 0.01
+                              for offset in (0.0, 2.0, 4.0)])
+    shuffled = np.random.default_rng(0).permutation(ordered)
+
+    paths = []
+    for name, times in (('ordered.fits', ordered), ('shuffled.fits', shuffled)):
+        path = tmp_path / name
+        make_tte_fits(path, times=times, broken_tstart_tstop=False)
+        paths.append(path)
+
+    blocks = [BurstCubeTTE.open(p).recording_blocks().as_list() for p in paths]
+    np.testing.assert_allclose(blocks[0], blocks[1])

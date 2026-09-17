@@ -1,16 +1,4 @@
 #!/usr/bin/env python
-# Copyright 2024-2025 by the BurstCube Team.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-# in compliance with the License. You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software distributed under the License
-# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing permissions and limitations under the
-# License.
-#
 """Minimal reproduction of the README caveat *TTE stops writing while the
 detector keeps counting*.
 
@@ -21,9 +9,9 @@ was quiet or TTE simply wrote nothing. CBD watches the same detector
 continuously and settles it.
 
 This downloads one day's cleaned CBD and TTE for one detector, finds the TTE
-recording blocks from the event times, and plots the two rates against each
-other with the gaps shaded. It also prints the CBD and TTE rates inside the
-blocks and inside the gaps.
+recording blocks, and plots the two rates against each other with the gaps
+shaded. It also prints the CBD and TTE rates inside the blocks and inside
+the gaps.
 
 Only cleaned (``_cl``) CBD is used, so nothing here depends on unfiltered
 data.
@@ -45,42 +33,8 @@ from gdt.core.phaii import Phaii
 
 from gdt.missions.burstcube.cbd import BurstCubeCBD
 from gdt.missions.burstcube.finders import BurstCubeObsFinder
+from gdt.missions.burstcube.gti import complement
 from gdt.missions.burstcube.tte import BurstCubeTTE
-
-#: Split the event times into blocks wherever the wait for the next event
-#: exceeds this. The 240814 blocks and gaps are both around a second long
-#: and the in-block waits are milliseconds, so the choice is not delicate.
-GAP_THRESHOLD = 0.5  # s
-
-
-def recording_blocks(times, gap_threshold=GAP_THRESHOLD):
-    """Split sorted event times into contiguous recording blocks.
-
-    Args:
-        times (np.array): Event times, sorted ascending
-        gap_threshold (float, optional): Start a new block wherever the wait
-            for the next event exceeds this, in seconds
-
-    Returns:
-        ([(float, float), ...]): The (start, stop) of each block
-    """
-    gap_idx = np.flatnonzero(np.diff(times) > gap_threshold)
-    starts = np.concatenate(([0], gap_idx + 1))
-    stops = np.concatenate((gap_idx, [times.size - 1]))
-    return list(zip(times[starts], times[stops]))
-
-
-def between(intervals):
-    """The gaps between consecutive intervals.
-
-    Args:
-        intervals ([(float, float), ...]): Intervals, sorted and disjoint
-
-    Returns:
-        ([(float, float), ...]): One interval per adjacent pair
-    """
-    return [(stop, next_start)
-            for (_, stop), (next_start, _) in zip(intervals, intervals[1:])]
 
 
 def bins_inside(data, intervals):
@@ -125,28 +79,32 @@ def main():
     cbd = BurstCubeCBD.open(cbd_path)
     tte = BurstCubeTTE.open(tte_path)
 
-    times = np.sort(tte.data.times)
-    blocks = recording_blocks(times)
-    gaps = between(blocks)
-    t0, t1 = blocks[0][0], blocks[-1][1]
-    live = sum(stop - start for start, stop in blocks)
+    t0, t1 = tte.time_range
+    blocks = tte.recording_blocks()
+    gaps = complement(blocks, t0, t1)
+    live = sum(stop - start for start, stop in blocks.as_list())
 
     print(f'{args.obs_id} {args.detector}: {tte.data.size} TTE events in '
-          f'{len(blocks)} recording blocks')
+          f'{blocks.num_intervals} recording blocks')
     print(f'  {live:.1f} s of live time in a {t1 - t0:.1f} s span '
           f'(a factor of {(t1 - t0) / live:.2f})')
 
     # Count TTE events per CBD bin, so both instruments are measured over
-    # exactly the same intervals and no rate scaling is needed.
+    # exactly the same intervals and no rate scaling is needed. The bin is
+    # half-open, [tstart, tstop): CBD bins are contiguous, so counting the
+    # closing edge too would assign an event landing exactly on a shared
+    # edge to both neighbours -- which happens here, for the one event that
+    # opens a recording block on a bin boundary.
     data = cbd.data
+    times = np.sort(tte.data.times)
     cbd_counts = data.counts.sum(axis=1)
-    tte_counts = (np.searchsorted(times, data.tstop, 'right')
+    tte_counts = (np.searchsorted(times, data.tstop, 'left')
                   - np.searchsorted(times, data.tstart, 'left'))
 
     print()
-    for label, intervals in [('inside a TTE block', blocks),
-                             ('inside a TTE gap', gaps)]:
-        mask = bins_inside(data, intervals)
+    for label, gti in [('inside a TTE block', blocks),
+                       ('inside a TTE gap', gaps)]:
+        mask = bins_inside(data, gti.as_list())
         exposure = data.exposure[mask].sum()
         print(f'  {label:20s} {mask.sum():4d} bins {exposure:7.2f} s   '
               f'CBD {cbd_counts[mask].sum() / exposure:6.1f} ct/s   '
@@ -160,8 +118,7 @@ def main():
     for ax, lc, color, title in [
             (axes[0], cbd_lc, 'C0', 'CBD _cl, 0.256 s bins'),
             (axes[1], tte_lc, 'C1', 'TTE binned to 0.256 s')]:
-        for start, stop in gaps:
-            ax.axvspan(start - t0, stop - t0, color='0.85', zorder=0)
+        shade(ax, gaps, t0)
         ax.step(lc.lo_edges - t0, lc.rates, where='post', color=color)
         ax.set_title(f'{args.detector} {args.obs_id} -- {title}')
         ax.set_ylabel('Rate (ct/s)')
@@ -171,8 +128,7 @@ def main():
 
     # The full span packs ~90 gaps into one axis; overlay the first 20 s so
     # the correspondence is legible bin by bin.
-    for start, stop in gaps:
-        axes[2].axvspan(start - t0, stop - t0, color='0.85', zorder=0)
+    shade(axes[2], gaps, t0)
     axes[2].step(cbd_lc.lo_edges - t0, cbd_lc.rates, where='post',
                  color='C0', label='CBD _cl')
     axes[2].step(tte_lc.lo_edges - t0, tte_lc.rates, where='post',
@@ -187,6 +143,12 @@ def main():
     fig.tight_layout()
     fig.savefig(args.outfile, dpi=130)
     print(f'\nwrote {args.outfile}')
+
+
+def shade(ax, gti, t0):
+    """Shade each interval of `gti`, relative to `t0`."""
+    for start, stop in gti.as_list():
+        ax.axvspan(start - t0, stop - t0, color='0.85', zorder=0)
 
 
 if __name__ == '__main__':

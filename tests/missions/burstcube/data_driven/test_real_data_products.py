@@ -1,15 +1,3 @@
-# Copyright 2024-2025 by the BurstCube Team.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-# in compliance with the License. You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software distributed under the License
-# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing permissions and limitations under the
-# License.
-#
 """Data-driven tests for CBD, TTE, orbit, GTI and housekeeping.
 
 Every bug found in this plugin so far was found by running against the real
@@ -33,7 +21,7 @@ from gdt.core.binning.binned import combine_by_factor
 from gdt.core.binning.unbinned import bin_by_time
 
 from gdt.missions.burstcube.cbd import BurstCubeCBD
-from gdt.missions.burstcube.gti import BurstCubeGti, intersect
+from gdt.missions.burstcube.gti import BurstCubeGti, complement, intersect
 from gdt.missions.burstcube.hk import BurstCubeHK
 from gdt.missions.burstcube.orbit import BurstCubeOrbit
 from gdt.missions.burstcube.tte import BurstCubeTTE
@@ -44,6 +32,11 @@ from .conftest import real_file
 CBD_CL = 'bc240530cs0_3cbd_cl.fits.gz'
 CBD_UF = 'bc240530cs0_3cbd_uf.fits.gz'
 TTE = 'bc240530cs0_tte_uf.evt.gz'
+# 240814 CS0 is the pairing behind the README's TTE recording-gap caveat:
+# it is the only archive day with both a quiet CBD baseline and TTE blocks
+# long enough to match CBD bins against one for one.
+CBD_CL_240814 = 'bc240814cs0_3cbd_cl.fits.gz'
+TTE_240814 = 'bc240814cs0_tte_uf.evt.gz'
 ORBIT = 'bc240530.hk.gz'
 DET_HK = 'bc240530csa.hk.gz'
 SAA_GTI = 'bc_csa_saa_in_cl.gti'
@@ -356,3 +349,61 @@ def test_detector_hk_exposes_thresholds_and_enable_flags():
     flags = hk.cbd_enabled()
     assert flags.shape[1] == 4
     assert set(np.unique(flags)).issubset({0, 1})
+
+
+def test_tte_recording_blocks_are_gaps_the_detector_kept_counting_through():
+    """The README caveat *TTE stops writing while the detector keeps
+    counting*, as a test. On 240814 CS0, TTE arrives in ~94 short blocks;
+    CBD counts at the same rate inside the gaps as inside the blocks, while
+    TTE records nothing at all across roughly 100 s of them.
+
+    This is the measurement the caveat and
+    ``examples/tte_gaps_vs_cbd.py`` report, so it is pinned here: if the
+    archive is ever reprocessed to fill the gaps, this test is how we find
+    out.
+    """
+    cbd = _open_cbd(CBD_CL_240814)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')      # the known broken TSTART/TSTOP
+        tte = BurstCubeTTE.open(real_file(TTE_240814))
+
+    blocks = tte.recording_blocks()
+    gaps = complement(blocks, *tte.time_range)
+    assert blocks.num_intervals == gaps.num_intervals + 1
+
+    live = sum(stop - start for start, stop in blocks.as_list())
+    span = tte.time_range[1] - tte.time_range[0]
+    assert live < 0.5 * span            # less than half the span is live
+
+    data = cbd.data
+    times = np.sort(tte.data.times)
+    cbd_counts = data.counts.sum(axis=1)
+    # TTE events per CBD bin, so both instruments are measured over exactly
+    # the same intervals and no rate scaling is involved. Half-open,
+    # [tstart, tstop): CBD bins are contiguous, and one real event lands
+    # exactly on a shared edge.
+    tte_counts = (np.searchsorted(times, data.tstop, 'left')
+                  - np.searchsorted(times, data.tstart, 'left'))
+
+    rates = {}
+    for label, gti in (('block', blocks), ('gap', gaps)):
+        # only bins lying entirely inside an interval, so the two samples are
+        # disjoint and each bin's own exposure is exact
+        mask = np.zeros(data.tstart.size, dtype=bool)
+        for start, stop in gti.as_list():
+            mask |= (data.tstart >= start) & (data.tstop <= stop)
+        exposure = data.exposure[mask].sum()
+        assert exposure > 50.0           # enough of each to mean anything
+        rates[label] = (cbd_counts[mask].sum() / exposure,
+                        tte_counts[mask].sum() / exposure, exposure)
+
+    cbd_in_block, tte_in_block, _ = rates['block']
+    cbd_in_gap, tte_in_gap, gap_exposure = rates['gap']
+
+    # inside a block the two instruments agree to a few percent
+    assert cbd_in_block / tte_in_block == pytest.approx(1.0, abs=0.1)
+    # inside a gap TTE is empty while CBD is unchanged
+    assert tte_in_gap == 0.0
+    assert cbd_in_gap / cbd_in_block == pytest.approx(1.0, abs=0.2)
+    # and that is a lot of counts TTE never wrote
+    assert tte_in_block * gap_exposure > 1e4

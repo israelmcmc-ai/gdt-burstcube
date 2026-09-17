@@ -19,7 +19,7 @@ from gdt.missions.burstcube import __version__
 # -- Project information -----------------------------------------------------
 
 project = 'The Gamma-ray Data Tools'
-license = 'Apache 2.0'
+license = 'MIT'
 author = 'The BurstCube Team'
 
 # The full version, including alpha/beta/rc tags
