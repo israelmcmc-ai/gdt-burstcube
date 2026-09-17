@@ -208,7 +208,7 @@ read against each other bin for bin. TTE is zero in every bin that lies
 inside a shaded interval; CBD is not.
 
 Inside the gaps CBD counts at the *same* rate as inside the blocks --
-slightly higher, if anything -- while TTE records nothing at all over 101 s.
+the difference is likely due to numerical resolution errors -- while TTE records nothing at all over 101 s.
 At TTE's own in-block rate those 101 s should have held roughly twelve
 thousand events.
 
