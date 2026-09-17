@@ -27,6 +27,8 @@ selection, rebinning, light curves, and count spectra -- including the
 caveats that bite in practice: bin-end (``TIMEPIXR=1``) timestamps, the
 ``TIME_SYST_ERROR`` column, the mid-mission energy threshold change, and a
 real rebinning failure caused by genuine 1 ms-short bins in the archive data.
+It also compares TTE against CBD on day 240814, interval for interval, which
+is where the TTE recording gaps show up.
 
 **2. Detector Response** -- the HEALPix response grid (nside=16, spacecraft
 coordinates), downloading only the pixels needed for one direction,
@@ -39,3 +41,15 @@ reconstructed attitude epochs in the whole archive, supplying your own
 attitude quaternion, GTI and SAA filtering, detector housekeeping (enable
 flags and energy thresholds), the mission timeline (and its known 37 s UTC
 offset), and the ``burcbmastr`` observation catalog.
+
+----
+
+Standalone Example Scripts
+--------------------------
+
+``examples/`` holds short, self-contained scripts that each download what
+they need and reproduce one specific result:
+
+* ``examples/tte_gaps_vs_cbd.py`` -- plots TTE's recording gaps against the
+  CBD rate over the same interval, the minimal reproduction of the README
+  caveat *TTE stops writing while the detector keeps counting*.
