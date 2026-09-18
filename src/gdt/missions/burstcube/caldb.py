@@ -452,7 +452,7 @@ def saa_region(cache_dir: Optional[Path] = None) -> SaaRegion:
       lists -- and they line up with ``X`` and ``Y`` in that order.
 
     Two more defects are left to
-    :class:`~gdt.missions.burstcube.saa.BurstCubeSaa`, which is what most
+    :class:`~gdt.missions.burstcube.saa.BurstCubeSAA`, which is what most
     callers should use: the polygon is left open (19 vertices, first !=
     last), and two pairs of vertices are listed out of order so that the
     boundary crosses itself twice.

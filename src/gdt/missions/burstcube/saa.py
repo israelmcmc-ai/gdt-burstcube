@@ -17,7 +17,7 @@ from gdt.core.geomagnetic import SouthAtlanticAnomaly
 
 from . import caldb
 
-__all__ = ['BurstCubeSaa']
+__all__ = ['BurstCubeSAA']
 
 
 def _crossings(latitude, longitude) -> int:
@@ -51,7 +51,7 @@ def _crossings(latitude, longitude) -> int:
         if not (i == 0 and j == num_edges - 1))
 
 
-class BurstCubeSaa(SouthAtlanticAnomaly):
+class BurstCubeSAA(SouthAtlanticAnomaly):
     """The BurstCube SAA boundary polygon, read from the CALDB SAA region
     file (``bcf/saa/bccsa_saareg_20230101v001.fits``).
 

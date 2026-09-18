@@ -333,7 +333,7 @@ Two more defects in the same file:
   -- so plotting the columns directly draws a broken outline.
 
 ``gdt.missions.burstcube.caldb.saa_region`` reads the columns in the
-corrected order, and ``BurstCubeSaa`` reorders the vertices and appends a
+corrected order, and ``BurstCubeSAA`` reorders the vertices and appends a
 20th to close the polygon. Closing changes no containment result on its own,
 since ``matplotlib.path.Path`` closes an open polygon implicitly; it only
 affects what is drawn and what ``is_closed()`` reports. The reordering is

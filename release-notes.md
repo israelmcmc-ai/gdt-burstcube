@@ -27,7 +27,7 @@ Initial package foundation.
   owed to the GDT Core authors.
 - Corrected the CALDB SAA polygon's column mapping: the region file's `X` is
   latitude and `Y` is longitude, the opposite of its own `TTYPE` comments.
-  `BurstCubeSaa` also closes the polygon, which the file leaves open. Both
+  `BurstCubeSAA` also closes the polygon, which the file leaves open. Both
   are cross-checked against Fermi GBM's `GbmSaaPolygon5`, whose first 11
   vertices BurstCube's polygon reproduces exactly.
 - Renamed `BurstCubeGti` to `BurstCubeGTI` and moved `intersect`, `union`,
@@ -39,7 +39,7 @@ Initial package foundation.
   caveat #7's mid-mission energy threshold change, and that the energy it
   corresponds to in CALDB's scale is ~20% below caveat #7's table.
 - The CALDB SAA polygon also lists two pairs of vertices out of order, so the
-  boundary crosses itself twice. `BurstCubeSaa` sorts the vertices by angle
+  boundary crosses itself twice. `BurstCubeSAA` sorts the vertices by angle
   about their centroid, but only when the file's own order self-intersects
   and sorting fixes it.
 - Removed `response.NSIDE`/`NUM_PIXELS`. The grid's resolution now comes from
@@ -50,3 +50,4 @@ Initial package foundation.
 - Documented what `DETECTOR_HK2`'s `PEAK_THRES` actually is -- a pulse-shape
   cut, not an energy threshold -- from the file's own column comments, since
   nothing else in the archive documents either column.
+- Renamed `BurstCubeSaa` to `BurstCubeSAA`.
