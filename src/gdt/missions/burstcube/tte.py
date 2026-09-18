@@ -134,7 +134,8 @@ class BurstCubeTTE(PhotonList):
         Each block runs from its first to its last event, so the returned
         total is live time and not elapsed time. The gaps themselves are the
         complement of the result over the file's time range, which
-        :func:`~gdt.missions.burstcube.gti.complement` will give you.
+        :meth:`~gdt.missions.burstcube.gti.BurstCubeGTI.complement` will
+        give you.
 
         Args:
             gap_threshold (float, optional): Start a new block wherever the

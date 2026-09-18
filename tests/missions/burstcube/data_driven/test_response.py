@@ -8,8 +8,8 @@ import numpy as np
 import pytest
 from gdt.core.spectra.functions import PowerLaw
 
-from gdt.missions.burstcube.response import (EDGE_INDICES_64_TO_16,
-                                             BurstCubeRsp)
+from gdt.missions.burstcube import caldb
+from gdt.missions.burstcube.response import BurstCubeRsp
 
 from .conftest import real_file
 
@@ -74,7 +74,8 @@ def test_to_cbd_gives_16_channels_and_preserves_folded_total(tmp_path):
     # MATRIX column, not bit-for-bit -- this is expected floating-point
     # summation-order noise, not a regression.
     assert folded_16.sum() == pytest.approx(folded_64.sum(), rel=1e-6)
-    expected_groups = np.add.reduceat(folded_64, EDGE_INDICES_64_TO_16[:-1])
+    edge_indices = caldb.regroup_edges('CS0', 64, 16)
+    expected_groups = np.add.reduceat(folded_64, edge_indices[:-1])
     np.testing.assert_allclose(folded_16, expected_groups, rtol=1e-6)
 
 

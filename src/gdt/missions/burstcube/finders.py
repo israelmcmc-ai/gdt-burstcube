@@ -124,7 +124,7 @@ class BurstCubeObsFinder(_BurstCubeFinderMixin):
         """
         if variant not in ('cl', 'uf'):
             raise ValueError("variant must be 'cl' or 'uf'")
-        obs_id = self._normalize_obs_id(self._args[0])
+        obs_id = self.obs_id
         files = [f'monitor/bc{obs_id}cs{n}_3cbd_{variant}.fits.gz'
                 for n in _detector_numbers(detectors)]
         return self._download_each(download_dir, files, **kwargs)
@@ -143,7 +143,7 @@ class BurstCubeObsFinder(_BurstCubeFinderMixin):
         Returns:
             (list of Path or None)
         """
-        obs_id = self._normalize_obs_id(self._args[0])
+        obs_id = self.obs_id
         files = [f'events/bc{obs_id}cs{n}_tte_uf.evt.gz'
                 for n in _detector_numbers(detectors)]
         return self._download_each(download_dir, files, **kwargs)
@@ -158,7 +158,7 @@ class BurstCubeObsFinder(_BurstCubeFinderMixin):
         Returns:
             (Path or None)
         """
-        obs_id = self._normalize_obs_id(self._args[0])
+        obs_id = self.obs_id
         return self._download_each(download_dir, [f'auxil/bc{obs_id}.hk.gz'],
                                    **kwargs)[0]
 
@@ -172,7 +172,7 @@ class BurstCubeObsFinder(_BurstCubeFinderMixin):
         Returns:
             (Path or None)
         """
-        obs_id = self._normalize_obs_id(self._args[0])
+        obs_id = self.obs_id
         return self._download_each(
             download_dir, [f'auxil/bc{obs_id}csa.hk.gz'], **kwargs)[0]
 
@@ -210,24 +210,47 @@ class BurstCubeObsFinder(_BurstCubeFinderMixin):
         Returns:
             (str): e.g. ``'burstcube/data/obs/2024_05/240530'``
         """
-        obs_id = self._normalize_obs_id(obs_id)
+        obs_id = self.obs_id_from(obs_id)
         year, month = '20' + obs_id[0:2], obs_id[2:4]
         return f'{self._root}/obs/{year}_{month}/{obs_id}'
 
+    @property
+    def obs_id(self) -> Optional[str]:
+        """(str or None): The observation day currently selected, as
+        ``YYMMDD``, or None before the first :meth:`cd`."""
+        args = getattr(self, '_args', None)
+        return self.obs_id_from(args[0]) if args else None
+
     @staticmethod
-    def _normalize_obs_id(obs_id: Union[str, AstropyTime]) -> str:
-        """Accept either a plain ``YYMMDD`` string or an
-        :class:`~astropy.time.Time`.
+    def obs_id_from(when: Union[str, AstropyTime]) -> str:
+        """The ``YYMMDD`` observation day containing a given time.
+
+        BurstCube organizes the archive by UTC calendar day, and the
+        ``burstcube_obsid`` time format registered by
+        :mod:`gdt.missions.burstcube.time` is the conversion, so this is
+        also available directly as ``Time(...).burstcube_obsid``. Every
+        method here that takes an observation day -- the constructor,
+        :meth:`cd` -- accepts a :class:`~astropy.time.Time` too and runs it
+        through this, so an explicit conversion is only needed when you want
+        the string itself (to name a directory, say).
 
         Args:
-            obs_id (str or astropy.time.Time): The observation day
+            when (str or astropy.time.Time): A time, in any format
+                :class:`~astropy.time.Time` accepts -- including BurstCube
+                MET via ``Time(met, format='burstcube')`` -- or a
+                ``YYMMDD`` string, which is returned unchanged.
 
         Returns:
-            (str)
+            (str): The observation day, e.g. ``'240530'``
+
+        Example:
+            >>> from gdt.missions.burstcube.time import Time
+            >>> BurstCubeObsFinder.obs_id_from(Time(114214208.4, format='burstcube'))
+            '240814'
         """
-        if isinstance(obs_id, AstropyTime):
-            return obs_id.burstcube_obsid
-        return str(obs_id)
+        if isinstance(when, AstropyTime):
+            return when.burstcube_obsid
+        return str(when)
 
 
 class BurstCubeTrendFinder(_BurstCubeFinderMixin):

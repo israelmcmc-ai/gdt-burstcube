@@ -33,7 +33,8 @@ from astropy.io import fits
 
 from gdt.core.data_primitives import Ebounds
 
-__all__ = ['alignment', 'ebounds', 'rebin', 'saa_region', 'resolve_caldb_file',
+__all__ = ['alignment', 'ebounds', 'rebin', 'regroup_edges', 'saa_region',
+           'resolve_caldb_file',
           'Alignment', 'Rebinning', 'SaaRegion', 'CALDB_REMOTE_ROOT',
           'DEFAULT_CACHE_DIR']
 
@@ -289,6 +290,62 @@ def rebin(det, nchan: int = 16, cache_dir: Optional[Path] = None) -> Rebinning:
         chan_max = np.asarray(hdu.data['CHANMAX'], dtype=int)
         rebinning = np.asarray(hdu.data['REBINNING'], dtype=int)
     return Rebinning(chan_min=chan_min, chan_max=chan_max, rebinning=rebinning)
+
+
+def regroup_edges(det, coarse: int, fine: int,
+                  cache_dir: Optional[Path] = None) -> np.ndarray:
+    """Edge indices that regroup a `coarse`-channel spectrum down to `fine`
+    channels, derived from the CALDB rebinning tables rather than written
+    out by hand.
+
+    CALDB describes both schemes against the detector's 1024 native
+    channels, not against each other, so the mapping between two of them has
+    to be composed: each `fine` group starts where one of the `coarse`
+    groups starts, and the index of that coarse group is the edge. This
+    holds only because the two schemes share their boundaries, which is
+    checked here rather than assumed.
+
+    The 64 -> 16 result is ``[0, 1, 6, 11, 16, 21, 26, 31, 35, 39, 43, 47,
+    51, 55, 59, 63, 64]`` -- 17 entries for 16 channels, identical for all
+    four detectors. It is the form
+    :meth:`~gdt.core.data_primitives.ResponseMatrix.rebin` wants, so the
+    final ``coarse`` closing the last group must be there; a 16-entry list
+    that drops it silently yields 15 channels while still preserving the
+    folded total.
+
+    Args:
+        det (str or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`):
+            The detector, e.g. ``'CS0'``
+        coarse (int): The number of channels to regroup from: 64 or 1024
+        fine (int): The number of channels to regroup to: 16 or 64
+        cache_dir (Path, optional): The local CALDB cache directory. Defaults
+            to :data:`DEFAULT_CACHE_DIR`.
+
+    Returns:
+        (np.array): ``fine + 1`` edge indices into the `coarse` channels
+
+    Raises:
+        ValueError: If `fine` is not coarser than `coarse`, or if the two
+            CALDB schemes do not share their group boundaries.
+    """
+    if fine >= coarse:
+        raise ValueError(f'fine ({fine}) must be coarser than coarse '
+                         f'({coarse})')
+
+    fine_starts = rebin(det, fine, cache_dir=cache_dir).chan_min
+    if coarse == 1024:
+        coarse_starts = np.arange(1024)
+    else:
+        coarse_starts = rebin(det, coarse, cache_dir=cache_dir).chan_min
+
+    edges = np.searchsorted(coarse_starts, fine_starts)
+    if not np.array_equal(coarse_starts[edges], fine_starts):
+        raise ValueError(
+            f'The CALDB {fine}-channel and {coarse}-channel rebinnings for '
+            f'{_det_name(det)} do not share their group boundaries, so one '
+            'cannot be expressed as a regrouping of the other.')
+
+    return np.append(edges, coarse_starts.size)
 
 
 def saa_region(cache_dir: Optional[Path] = None) -> SaaRegion:

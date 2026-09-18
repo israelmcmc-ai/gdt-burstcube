@@ -22,13 +22,6 @@ from .time import Time
 
 __all__ = ['BurstCubeAttitude']
 
-#: Approximate 1-sigma pointing reconstruction error, in degrees, for each of
-#: the 3 rows of the attitude file. These are NOT present in the FITS file
-#: itself: they come from ``trend/README`` and archive caveat #1, and are
-#: recorded here only for reference/documentation. They are approximate
-#: ("~10 deg" in the source), so treat them as order-of-magnitude only.
-APPROXIMATE_POINTING_ERROR_DEG = (10.0, 12.0, 10.5)
-
 
 class BurstCubeAttitude(FitsFileContextManager):
     """Reader for the BurstCube attitude file. Exactly 3 rows exist in the

@@ -30,7 +30,8 @@ the event list is empty while the detector keeps counting at its normal
 rate. Any rate taken over an interval that spans a gap is therefore diluted.
 :meth:`~gdt.missions.burstcube.tte.BurstCubeTTE.recording_blocks` returns the
 blocks as a :class:`~gdt.core.data_primitives.Gti`, and
-:func:`~gdt.missions.burstcube.gti.complement` turns them into the gaps.
+:meth:`~gdt.missions.burstcube.gti.BurstCubeGTI.complement` turns them into
+the gaps.
 
     >>> blocks = tte.recording_blocks()
     >>> blocks.num_intervals

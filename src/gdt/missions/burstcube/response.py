@@ -41,14 +41,6 @@ NSIDE = 16
 #: Total number of pixels in the grid (``12 * NSIDE**2``).
 NUM_PIXELS = hp.nside2npix(NSIDE)
 
-#: The 64->16 channel regroup, verified against the real CS0 pixel-0 file
-#: (spec section 21): 17 edge indices for 16 channels. A 16-entry list
-#: (omitting the trailing 63) silently yields 15 channels while still
-#: preserving the folded total -- :meth:`BurstCubeRsp.to_cbd` asserts
-#: ``num_chans == 16`` to catch that class of mistake immediately.
-EDGE_INDICES_64_TO_16 = np.array(
-    [0, 1, 6, 11, 16, 21, 26, 31, 35, 39, 43, 47, 51, 55, 59, 63, 64])
-
 #: The CALDB root for response files, under the same burstcube/csa release
 #: tree as the other CALDB products (see gdt.missions.burstcube.caldb).
 RESPONSE_REMOTE_ROOT = 'https://heasarc.gsfc.nasa.gov/FTP/caldb/data/burstcube/csa/cpf/response/'
@@ -243,10 +235,11 @@ class BurstCubeRsp(Rsp):
 
         This does two things, both required (spec section 21):
 
-        1. Regroups the channel axis using the verified 17-entry
-           :data:`EDGE_INDICES_64_TO_16`, and asserts the result actually
-           has 16 channels (a truncated 16-entry list would silently give
-           15 while still preserving the folded total).
+        1. Regroups the channel axis with the 64 -> 16 edges that
+           :func:`~gdt.missions.burstcube.caldb.regroup_edges` composes from
+           this detector's CALDB ``reb64`` and ``reb16`` tables, and asserts
+           the result actually has 16 channels (a truncated 16-entry list
+           would silently give 15 while still preserving the folded total).
         2. Replaces the regrouped channel boundaries -- which
            :meth:`~gdt.core.data_primitives.ResponseMatrix.rebin` inherits
            from this DRM's own (older, rounded, detector-independent)
@@ -259,11 +252,12 @@ class BurstCubeRsp(Rsp):
         Returns:
             (:class:`BurstCubeRsp`)
         """
-        regrouped = self.drm.rebin(edge_indices=EDGE_INDICES_64_TO_16)
+        edge_indices = caldb.regroup_edges(self.detector, 64, 16)
+        regrouped = self.drm.rebin(edge_indices=edge_indices)
         if regrouped.num_chans != 16:
             raise RuntimeError(
                 f'Expected 16 channels after the CBD regroup, got '
-                f'{regrouped.num_chans}; EDGE_INDICES_64_TO_16 may be wrong.')
+                f'{regrouped.num_chans} from edge indices {edge_indices}.')
 
         eb16 = caldb.ebounds(self.detector, 16)
         final_drm = ResponseMatrix(regrouped.matrix,

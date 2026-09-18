@@ -36,7 +36,7 @@ from gdt.core.phaii import Phaii
 
 from gdt.missions.burstcube.cbd import BurstCubeCBD
 from gdt.missions.burstcube.finders import BurstCubeObsFinder
-from gdt.missions.burstcube.gti import complement
+from gdt.missions.burstcube.gti import BurstCubeGTI
 from gdt.missions.burstcube.tte import BurstCubeTTE
 
 
@@ -84,7 +84,7 @@ def main():
 
     t0, t1 = tte.time_range
     blocks = tte.recording_blocks()
-    gaps = complement(blocks, t0, t1)
+    gaps = BurstCubeGTI.complement(blocks, t0, t1)
     live = sum(stop - start for start, stop in blocks.as_list())
 
     print(f'{args.obs_id} {args.detector}: {tte.data.size} TTE events in '

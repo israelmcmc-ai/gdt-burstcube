@@ -10,8 +10,7 @@ from gdt.core.spectra.functions import PowerLaw
 
 from gdt.missions.burstcube import caldb
 from gdt.missions.burstcube.frame import BurstCubeFrame
-from gdt.missions.burstcube.response import (EDGE_INDICES_64_TO_16, NSIDE,
-                                             BurstCubeResponseGrid,
+from gdt.missions.burstcube.response import (NSIDE, BurstCubeResponseGrid,
                                              BurstCubeRsp)
 
 
@@ -76,7 +75,8 @@ def test_to_cbd_gives_16_channels_preserves_total_and_group_sums(tmp_path, monke
     folded_16 = cbd_rsp.drm.fold_spectrum(pl.fit_eval, params)
     assert folded_16.sum() == pytest.approx(folded_64.sum(), rel=1e-9)
 
-    expected_groups = np.add.reduceat(folded_64, EDGE_INDICES_64_TO_16[:-1])
+    edge_indices = caldb.regroup_edges('CS0', 64, 16)
+    expected_groups = np.add.reduceat(folded_64, edge_indices[:-1])
     np.testing.assert_allclose(folded_16, expected_groups, rtol=1e-9)
 
 
@@ -92,22 +92,23 @@ def test_to_cbd_uses_caldb_eb16_energies_not_rsp_internal(monkeypatch):
     assert cbd_rsp.ebounds.high_edges()[-1] != pytest.approx(1000.0)
 
 
-def test_edge_indices_constant_has_17_entries_for_16_channels():
+def test_caldb_regroup_edges_have_17_entries_for_16_channels():
     """Regression for the spec-section-21 correction: a 16-entry list
     (omitting the trailing 63) silently gives 15 channels while still
     preserving the folded total, so it would NOT raise -- only checking the
     entry count and the actual regrouped num_chans catches it.
     """
-    assert len(EDGE_INDICES_64_TO_16) == 17
+    edge_indices = caldb.regroup_edges('CS0', 64, 16)
+    assert len(edge_indices) == 17
 
     rsp = _synthetic_rsp()
-    correct = rsp.drm.rebin(edge_indices=EDGE_INDICES_64_TO_16)
+    correct = rsp.drm.rebin(edge_indices=edge_indices)
     assert correct.num_chans == 16
 
     # the buggy earlier draft of section 10 (spec section 21) omitted the
     # value 63 specifically -- not simply the last entry -- merging the
     # (59,63) and (63,64) groups into one (59,64) group.
-    buggy_earlier_draft = np.array([i for i in EDGE_INDICES_64_TO_16 if i != 63])
+    buggy_earlier_draft = np.array([i for i in edge_indices if i != 63])
     assert len(buggy_earlier_draft) == 16
     wrong = rsp.drm.rebin(edge_indices=buggy_earlier_draft)
     assert wrong.num_chans == 15  # silently wrong, not a crash -- the whole danger

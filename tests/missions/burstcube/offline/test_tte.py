@@ -6,7 +6,7 @@ import pytest
 from gdt.core.binning.unbinned import bin_by_time
 from gdt.core.phaii import Phaii
 
-from gdt.missions.burstcube.gti import complement
+from gdt.missions.burstcube.gti import BurstCubeGTI
 from gdt.missions.burstcube.tte import BurstCubeTTE
 
 from .conftest import TIMEDEL_CBD, make_tte_fits
@@ -290,7 +290,7 @@ def test_recording_blocks_complement_is_the_gaps(tmp_path):
     make_tte_fits(path, times=times, broken_tstart_tstop=False)
     tte = BurstCubeTTE.open(path)
 
-    gaps = complement(tte.recording_blocks(), *tte.time_range)
+    gaps = BurstCubeGTI.complement(tte.recording_blocks(), *tte.time_range)
     assert gaps.num_intervals == 2
     np.testing.assert_allclose(gaps.as_list(),
                                [(t0 + 0.04, t0 + 2.0), (t0 + 2.04, t0 + 4.0)])

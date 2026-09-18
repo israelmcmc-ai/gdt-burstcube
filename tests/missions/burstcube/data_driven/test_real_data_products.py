@@ -21,8 +21,9 @@ from gdt.core.binning.binned import combine_by_factor
 from gdt.core.binning.unbinned import bin_by_edges, bin_by_time
 from gdt.core.phaii import Phaii
 
+from gdt.missions.burstcube import caldb
 from gdt.missions.burstcube.cbd import BurstCubeCBD
-from gdt.missions.burstcube.gti import BurstCubeGti, complement, intersect
+from gdt.missions.burstcube.gti import BurstCubeGTI
 from gdt.missions.burstcube.hk import BurstCubeHK
 from gdt.missions.burstcube.orbit import BurstCubeOrbit
 from gdt.missions.burstcube.tte import BurstCubeTTE
@@ -40,6 +41,7 @@ CBD_CL_240814 = 'bc240814cs0_3cbd_cl.fits.gz'
 TTE_240814 = 'bc240814cs0_tte_uf.evt.gz'
 ORBIT = 'bc240530.hk.gz'
 DET_HK = 'bc240530csa.hk.gz'
+DET_HK_240814 = 'bc240814csa.hk.gz'
 SAA_GTI = 'bc_csa_saa_in_cl.gti'
 BIN_GTI = 'bc_cs0_bin0_256.gti'
 
@@ -317,12 +319,12 @@ def test_orbit_merge_deduplicates_and_is_order_independent():
 def test_gti_files_read_and_intersect():
     """Trend GTI files read, and intersecting SAA-in with the binning GTI
     yields intervals contained in both."""
-    saa = BurstCubeGti.open(real_file(SAA_GTI))
-    binning = BurstCubeGti.open(real_file(BIN_GTI))
+    saa = BurstCubeGTI.open(real_file(SAA_GTI))
+    binning = BurstCubeGTI.open(real_file(BIN_GTI))
     assert saa.gti.num_intervals == 586
     assert binning.gti.num_intervals == 107
 
-    combined = intersect(saa.gti, binning.gti)
+    combined = BurstCubeGTI.intersect(saa.gti, binning.gti)
     intervals = combined.as_list()
     assert len(intervals) > 0
     # every interval of an intersection must be non-empty and lie inside both
@@ -372,7 +374,7 @@ def test_tte_recording_blocks_are_gaps_cbd_kept_counting_through():
 
     tstart, tstop = tte.time_range
     blocks = tte.recording_blocks()
-    gaps = complement(blocks, tstart, tstop)
+    gaps = BurstCubeGTI.complement(blocks, tstart, tstop)
     assert blocks.num_intervals == gaps.num_intervals + 1
 
     live = sum(stop - start for start, stop in blocks.as_list())
@@ -428,3 +430,56 @@ def test_tte_recording_blocks_are_gaps_cbd_kept_counting_through():
     deficit = cbd_counts[in_block].sum() - tte_counts[in_block].sum()
     bright_deficit = cbd_counts[bright].sum() - tte_counts[bright].sum()
     assert bright_deficit >= deficit
+
+
+def test_base_thres_is_the_caveat_7_threshold_and_peak_thres_is_not():
+    """``PEAK_THRES`` reads 6.0 mV for every detector on every day and never
+    moves; ``BASE_THRES`` is the one archive caveat #7's mid-mission change
+    raised, and 240814 catches a transition inside one file.
+
+    Easy to get backwards -- the names suggest otherwise -- so pin it.
+    """
+    early = BurstCubeHK.open(real_file(DET_HK))
+    late = BurstCubeHK.open(real_file(DET_HK_240814))
+
+    for hk in (early, late):
+        assert np.array_equal(np.unique(hk.peak_threshold()), [6.0])
+
+    np.testing.assert_array_equal(
+        [np.unique(early.base_threshold()[:, d]) for d in range(4)],
+        [[82.0], [98.0], [74.0], [74.0]])
+    assert [list(np.unique(late.base_threshold()[:, d])) for d in range(4)] == [
+        [82.0, 238.0], [98.0, 257.0], [74.0, 247.0], [74.0, 259.0]]
+
+
+def test_tte_threshold_turn_on_sits_below_caveat_7s_table_by_a_constant_factor():
+    """Caveat #7 Table 1 puts CS0's threshold at 26.93 keV before the change
+    and 100.12 keV after. The turn-on measured in the TTE spectra is ~20%
+    lower -- on *both* sides, so it is a calibration scale offset between
+    CALDB's pre-launch ``eb1024`` and whatever the table is on, not scatter.
+
+    This is what notebook 1 reports, and the reason the plugin quotes the
+    measured value rather than the table's.
+    """
+    def turn_on_kev(basename):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')      # broken TSTART/TSTOP
+            tte = BurstCubeTTE.open(real_file(basename))
+        ebounds = caldb.ebounds(tte.detector, 1024)
+        low = np.asarray(ebounds.low_edges())
+        width = np.asarray(ebounds.high_edges()) - low
+        density = np.bincount(tte.data.channels, minlength=1024) / width
+        return low[np.flatnonzero(density >= 0.5 * density.max())[0]]
+
+    before, after = turn_on_kev(TTE), turn_on_kev(TTE_240814)
+    table_before, table_after = 26.93, 100.12        # caveat #7, detector 0
+
+    # the change itself is unmistakable: a factor of ~3.7 either way
+    assert after / before > 3.0
+    assert table_after / table_before > 3.0
+
+    # but each sits ~20% below the table, by the same factor
+    ratio_before = before / table_before
+    ratio_after = after / table_after
+    assert 0.7 < ratio_before < 0.9
+    assert ratio_after == pytest.approx(ratio_before, abs=0.05)

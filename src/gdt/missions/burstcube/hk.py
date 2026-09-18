@@ -110,8 +110,13 @@ class BurstCubeHK(FitsFileContextManager):
         return self._enable_flag('TTE_ENABLED', detector)
 
     def peak_threshold(self, detector=None):
-        """The ``PEAK_THRES`` energy threshold from ``DETECTOR_HK2``, in mV.
-        See archive caveat #7 for the mid-mission threshold change.
+        """The ``PEAK_THRES`` column of ``DETECTOR_HK2``, in mV.
+
+        This is **not** the energy threshold that archive caveat #7's
+        mid-mission change moved -- that is
+        :meth:`base_threshold`. ``PEAK_THRES`` reads 6.0 mV for every
+        detector in every housekeeping file in the archive and never
+        changes.
 
         Args:
             detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
@@ -123,8 +128,19 @@ class BurstCubeHK(FitsFileContextManager):
         return self._threshold('PEAK_THRES', detector)
 
     def base_threshold(self, detector=None):
-        """The ``BASE_THRES`` energy threshold from ``DETECTOR_HK2``, in mV.
-        See archive caveat #7 for the mid-mission threshold change.
+        """The ``BASE_THRES`` discriminator threshold from ``DETECTOR_HK2``,
+        in mV. This is the energy threshold archive caveat #7's mid-mission
+        change moved: 82 -> 238 mV on ``CS0``, and 98 -> 257, 74 -> 247,
+        74 -> 259 on ``CS1``-``CS3``. The new values were tried temporarily
+        before being made permanent, so a single day's file can hold both.
+
+        Caveat #7's Table 1 quotes these in keV (26.93 -> 100.12 keV on
+        detector 0). The turn-on measured in the TTE spectra sits ~20% below
+        that, consistently across all four detectors and on both sides of
+        the change, because the archive's PHA-to-energy mapping is CALDB's
+        pre-launch ``eb1024`` and the table is on a different calibration.
+        Use the CALDB scale for anything you compare against other archive
+        energies; see notebook 1.
 
         Args:
             detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):

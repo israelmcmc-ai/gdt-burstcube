@@ -199,3 +199,35 @@ class TestAlignmentAndSaa:
         assert len(saa.latitude) == 19
         assert saa.longitude[0] == pytest.approx(-30.0, abs=1e-3)
         assert saa.latitude[0] == pytest.approx(33.9, abs=1e-3)
+
+
+def test_regroup_edges_compose_the_two_caldb_schemes():
+    """The 64 -> 16 regroup used by ``BurstCubeRsp.to_cbd`` is composed from
+    CALDB's own ``reb64`` and ``reb16`` tables rather than written out by
+    hand. It is the same for all four detectors, and every edge must land on
+    a real ``reb64`` group boundary.
+    """
+    for det in ('CS0', 'CS1', 'CS2', 'CS3'):
+        edges = caldb.regroup_edges(det, 64, 16)
+        np.testing.assert_array_equal(
+            edges,
+            [0, 1, 6, 11, 16, 21, 26, 31, 35, 39, 43, 47, 51, 55, 59, 63, 64])
+
+        # each edge indexes a reb64 group whose first native channel is also
+        # the first native channel of the matching reb16 group
+        reb64, reb16 = caldb.rebin(det, 64), caldb.rebin(det, 16)
+        np.testing.assert_array_equal(np.asarray(reb64.chan_min)[edges[:-1]],
+                                      reb16.chan_min)
+        assert edges[-1] == len(reb64.chan_min)
+
+
+def test_regroup_edges_1024_to_64_covers_every_native_channel():
+    edges = caldb.regroup_edges('CS0', 1024, 64)
+    assert len(edges) == 65
+    assert edges[0] == 0 and edges[-1] == 1024
+    np.testing.assert_array_equal(edges[:-1], caldb.rebin('CS0', 64).chan_min)
+
+
+def test_regroup_edges_rejects_a_finer_target():
+    with pytest.raises(ValueError, match='must be coarser'):
+        caldb.regroup_edges('CS0', 16, 64)

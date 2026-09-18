@@ -141,3 +141,35 @@ def test_trend_finder_is_ready_to_download_without_an_explicit_cd(monkeypatch):
 
     finder.get_attitude('/tmp/out', verbose=False)
     assert requested == ['attitude/bc_csa_att.fits']
+
+
+def test_obs_id_from_converts_a_time_and_passes_strings_through():
+    """A Time in any format resolves to the UTC calendar day BurstCube
+    organizes the archive by; a YYMMDD string is already the answer."""
+    met = Time(114214208.408, format='burstcube')
+    assert BurstCubeObsFinder.obs_id_from(met) == '240814'
+    assert BurstCubeObsFinder.obs_id_from(Time('2024-05-30T17:05:34',
+                                               format='isot')) == '240530'
+    assert BurstCubeObsFinder.obs_id_from('240530') == '240530'
+
+
+def test_obs_id_property_reports_the_selected_day_from_a_time():
+    """`cd` is not called here -- it would need the live archive -- so
+    `_args` is set directly, as the other tests in this file do."""
+    finder = BurstCubeObsFinder()
+    assert finder.obs_id is None
+
+    finder._args = (Time(114214208.408, format='burstcube'),)
+    assert finder.obs_id == '240814'
+    assert finder._construct_path(finder.obs_id).endswith('obs/2024_08/240814')
+
+    finder._args = ('240530',)
+    assert finder.obs_id == '240530'
+
+
+def test_obs_id_from_agrees_with_the_burstcube_obsid_time_format():
+    """obs_id_from is the finder-side name for the registered time format,
+    so the two must not drift apart."""
+    for met in (107629263.5, 114214208.4, 100000000.0):
+        time = Time(met, format='burstcube')
+        assert BurstCubeObsFinder.obs_id_from(time) == time.burstcube_obsid
