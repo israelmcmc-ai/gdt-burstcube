@@ -110,13 +110,26 @@ class BurstCubeHK(FitsFileContextManager):
         return self._enable_flag('TTE_ENABLED', detector)
 
     def peak_threshold(self, detector=None):
-        """The ``PEAK_THRES`` column of ``DETECTOR_HK2``, in mV.
+        """The ``PEAK_THRES`` column of ``DETECTOR_HK2``, in mV: the
+        pulse-shape criterion the IDAB front end uses to accept a sample as
+        a genuine peak.
 
-        This is **not** the energy threshold that archive caveat #7's
-        mid-mission change moved -- that is
-        :meth:`base_threshold`. ``PEAK_THRES`` reads 6.0 mV for every
-        detector in every housekeeping file in the archive and never
-        changes.
+        The file's own column comment is "Min lvl past pre-post window x
+        valid IDAB peak" -- how far a candidate sample must stand above the
+        samples on either side of it, within the ``PHA_WIN`` window, to
+        count as a peak rather than a shoulder or a slow drift. It is a
+        pulse-shape cut, not an energy cut.
+
+        This is therefore **not** the threshold archive caveat #7's
+        mid-mission change moved -- that is :meth:`base_threshold`, which
+        measures height above the running baseline instead. ``PEAK_THRES``
+        reads 6.0 mV for every detector in every housekeeping file in the
+        archive and never changes.
+
+        Neither column is described in the archive caveats document or the
+        archive guide; the ``TTYPE`` comments above are the only
+        documentation, and there is no equivalent in any Fermi GBM data
+        product.
 
         Args:
             detector (int, str, or :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`, optional):
@@ -129,10 +142,14 @@ class BurstCubeHK(FitsFileContextManager):
 
     def base_threshold(self, detector=None):
         """The ``BASE_THRES`` discriminator threshold from ``DETECTOR_HK2``,
-        in mV. This is the energy threshold archive caveat #7's mid-mission
-        change moved: 82 -> 238 mV on ``CS0``, and 98 -> 257, 74 -> 247,
-        74 -> 259 on ``CS1``-``CS3``. The new values were tried temporarily
-        before being made permanent, so a single day's file can hold both.
+        in mV: how far a pulse must rise above the running baseline average
+        to be recorded. The file's own column comment is "Min lvl past
+        baseline avg x valid IDAB peak".
+
+        This is the energy threshold archive caveat #7's mid-mission change
+        moved: 82 -> 238 mV on ``CS0``, and 98 -> 257, 74 -> 247, 74 -> 259
+        on ``CS1``-``CS3``. The new values were tried temporarily before
+        being made permanent, so a single day's file can hold both.
 
         Caveat #7's Table 1 quotes these in keV (26.93 -> 100.12 keV on
         detector 0). The turn-on measured in the TTE spectra sits ~20% below

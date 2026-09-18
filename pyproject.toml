@@ -45,6 +45,7 @@ where = ["src"]
     'bccs2_align_20210101v000.fits',
     'bccs3_align_20210101v000.fits',
     'bccsa_saareg_20230101v001.fits',
+    'bccsa_sim_20221001v001.fits',
     'bccsa_eb16_20221001v001.fits',
     'bccsa_eb64_20221001v001.fits',
     'bccsa_eb1024_20221001v001.fits',

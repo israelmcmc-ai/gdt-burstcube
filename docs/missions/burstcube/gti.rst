@@ -32,30 +32,15 @@ only to one read from a trend file.
 Why ``apply_to`` exists
 =======================
 
-It is not a convenience wrapper. Handing a real trend GTI straight to
-gdt-core's ``slice_time`` fails, for two reasons that both come from the
-shapes these files have rather than from anything BurstCube-specific about
-slicing:
+It is not a convenience wrapper: gdt-core's ``slice_time`` raises on a real
+GTI, for two reasons that both come from the shapes these files have rather
+than from anything BurstCube-specific about slicing. Most intervals of a
+mission-long trend GTI select no data, and an empty segment's ``time_range``
+is ``None``, which raises inside the primitive; and disjoint intervals empty
+the cumulative GTI accumulator ``Phaii.slice_time`` builds. Both failures,
+and what ``apply_to`` does instead, are commented in its body.
 
-* **Most intervals select nothing.** A trend GTI spans the whole mission --
-  the SAA one has 586 intervals over five months -- while a single CBD or
-  TTE file covers minutes to hours. ``slice_time`` builds
-  ``Gti.from_list([segment.time_range])`` per requested range, and an empty
-  segment's ``time_range`` is ``None``, which raises ``TypeError`` from
-  inside the primitive. ``apply_to`` drops those intervals first. Filtering
-  on the file's overall time range is not enough: BurstCube data is gappy,
-  so an interval can sit inside the span and still contain no bins.
-
-* **Disjoint intervals empty the accumulator.** ``Phaii.slice_time``
-  accumulates a GTI by *intersecting* each segment's own range into a
-  running total, which empties as soon as two segments are disjoint and then
-  raises on the empty result -- even though that accumulated value is
-  discarded (``from_data`` is handed ``self.gti`` instead). ``apply_to``
-  slices one interval per call, so that loop runs exactly once and never
-  empties, then recombines with ``merge``.
-
-See the :ref:`notebooks`, notebook 3, for a worked example of both failures
-and the result.
+See the :ref:`notebooks`, notebook 3, for it in use.
 
 Reference/API
 =============

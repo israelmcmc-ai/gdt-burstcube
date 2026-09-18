@@ -244,6 +244,55 @@ same data through the plugin's binning API.
 
 This problem is **not** described in the official caveats document either.
 
+CALDB energy scale disagrees with caveat #7's threshold table
+-------------------------------------------------------------
+
+Archive caveat #7 gives the per-detector energy thresholds in keV, before
+and after the mid-mission change (its Table 1). Those numbers do **not**
+match what the data shows, because the two are on different energy
+calibrations.
+
+The threshold is directly measurable: in a TTE file's native 1024-channel
+spectrum it is nearly a step, so the first channel reaching half the peak
+counts/keV locates it to within a channel or two. Measured that way in all
+28 TTE files:
+
+.. code-block::
+
+   detector   caveat #7 keV     measured keV      ratio
+              before / after    before / after    before / after
+   CS0         26.93 / 100.12    20.8  /  77.9    0.77 / 0.78
+   CS1         30.33 /  99.73    26.2  /  83.3    0.86 / 0.84
+   CS2         21.40 /  99.41    17.0  /  76.6    0.79 / 0.77
+   CS3         20.30 /  99.45    17.5  /  80.2    0.86 / 0.81
+
+   (measured values averaged over the TTE days in each state: 240530 and
+   240602 before, 240628 onward after)
+
+**The measured value is 0.77-0.86 of the table's, for every detector, on
+both sides of the change.** A constant multiplicative offset across four
+detectors and two threshold settings is a gain difference between two
+calibrations, not scatter and not a poor choice of half-max definition --
+those would not agree to a percent between the two states.
+
+The same factor shows up in the ``DETECTOR_HK2`` ``BASE_THRES`` settings
+(82 -> 238 mV on ``CS0``, and similarly on the other three): fitting the
+table's keV values against those gives ~0.47 keV/mV, while fitting the
+measured values gives ~0.36.
+
+*Where the two scales come from.* The archive's PHA-to-energy mapping is
+CALDB's ``eb1024``, whose validity date is 2022-10-01 -- pre-launch. Caveat
+#7's table is on whatever calibration converted the commanded mV setting to
+keV. Which is closer to the true detector response is not something the
+archive answers.
+
+*Which to use.* The CALDB one, for anything you compare against other
+archive energies. A CBD channel boundary, a TTE spectrum and a response
+matrix's ``EBOUNDS`` all come from CALDB, so a threshold quoted on that
+scale lines up with them and one taken from caveat #7's table does not.
+Expect the measured threshold to read ~20% below the caveat, and do not mix
+the two.
+
 CALDB SAA polygon: X is latitude, Y is longitude
 -------------------------------------------------------------
 
@@ -269,15 +318,29 @@ lists named ``_latitude`` and ``_longitude``, and they line up with ``X``
 and ``Y`` in that order. BurstCube's polygon is GBM's, extended by 8 more
 vertices to the west.
 
-The file also leaves the polygon **open** -- the 19th vertex does not repeat
-the first -- so plotting the columns directly draws a broken outline.
+Two more defects in the same file:
+
+* **Two pairs of vertices are listed out of order** -- (11, 12) and
+  (17, 18), counting from zero. The boundary doubles back on itself at each,
+  so the polygon self-intersects twice, showing up as a spur off the eastern
+  and western corners. Sorting the vertices by angle about their centroid
+  removes both crossings and leaves the other 15 in exactly the order the
+  file gives them, so this is a repair of two transpositions rather than a
+  rearrangement. It changes the enclosed area by about 1%, since a
+  point-in-polygon test counts the two small bow-ties with the opposite sign
+  to the rest of the region.
+* **The polygon is left open** -- the 19th vertex does not repeat the first
+  -- so plotting the columns directly draws a broken outline.
 
 ``gdt.missions.burstcube.caldb.saa_region`` reads the columns in the
-corrected order, and ``BurstCubeSaa`` appends a 20th vertex to close the
-polygon. Closing it changes no containment result, since
-``matplotlib.path.Path`` closes an open polygon implicitly; it only affects
-what is drawn and what ``is_closed()`` reports. If you read the file
-yourself rather than through this plugin, swap the columns.
+corrected order, and ``BurstCubeSaa`` reorders the vertices and appends a
+20th to close the polygon. Closing changes no containment result on its own,
+since ``matplotlib.path.Path`` closes an open polygon implicitly; it only
+affects what is drawn and what ``is_closed()`` reports. The reordering is
+applied only when the file's own order self-intersects *and* sorting fixes
+it, so a future CALDB revision that is already correct passes through
+untouched. If you read the file yourself rather than through this plugin,
+you need all three corrections.
 
 Timeline UTC column is 37 seconds off its own MET column
 -------------------------------------------------------------

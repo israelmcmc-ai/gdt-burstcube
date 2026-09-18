@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from gdt.missions.burstcube import caldb
-from gdt.missions.burstcube.saa import BurstCubeSaa
+from gdt.missions.burstcube.saa import BurstCubeSaa, _crossings
 
 
 def test_polygon_matches_caldb_file_and_is_closed(tmp_path, monkeypatch):
@@ -83,3 +83,51 @@ def test_contains_accepts_arrays(tmp_path, monkeypatch):
     lat = np.array([-40.0, 50.0])
     result = saa.contains(lon, lat)
     np.testing.assert_array_equal(result, [True, False])
+
+
+def test_polygon_is_simple_after_reordering(tmp_path, monkeypatch):
+    """The file lists two pairs of vertices out of order, so its boundary
+    doubles back and crosses itself twice -- visible as a spur off each of
+    the eastern and western corners. Sorting by angle about the centroid
+    removes both.
+    """
+    monkeypatch.setattr(caldb, '_download',
+                        lambda *a, **k: (_ for _ in ()).throw(OSError('blocked')))
+    region = caldb.saa_region(cache_dir=tmp_path)
+    saa = BurstCubeSaa(cache_dir=tmp_path)
+
+    assert _crossings(region.latitude, region.longitude) == 2
+    assert _crossings(saa.latitude, saa.longitude) == 0
+
+
+def test_reordering_moves_only_the_two_transposed_pairs(tmp_path, monkeypatch):
+    """Everything except vertices 11/12 and 17/18 keeps the file's order, so
+    this is a repair of two transpositions, not a wholesale rearrangement.
+    """
+    monkeypatch.setattr(caldb, '_download',
+                        lambda *a, **k: (_ for _ in ()).throw(OSError('blocked')))
+    region = caldb.saa_region(cache_dir=tmp_path)
+    saa = BurstCubeSaa(cache_dir=tmp_path)
+
+    file_order = list(zip(np.round(region.latitude, 3),
+                          np.round(region.longitude, 3)))
+    fixed = list(zip(np.round(saa.latitude[:-1], 3),
+                     np.round(saa.longitude[:-1], 3)))
+
+    expected = list(file_order)
+    expected[11], expected[12] = expected[12], expected[11]
+    expected[17], expected[18] = expected[18], expected[17]
+    assert fixed == expected
+
+
+def test_already_simple_polygon_is_left_alone():
+    """A future CALDB revision that is already correctly ordered must pass
+    through untouched, including a concave one no angular sweep would order
+    the same way."""
+    latitude = np.array([0.0, 0.0, 5.0, 10.0, 10.0])
+    longitude = np.array([0.0, 10.0, 5.0, 10.0, 0.0])   # concave, simple
+    assert _crossings(latitude, longitude) == 0
+
+    out_lat, out_lon = BurstCubeSaa._ordered_by_angle(latitude, longitude)
+    np.testing.assert_array_equal(out_lat, latitude)
+    np.testing.assert_array_equal(out_lon, longitude)

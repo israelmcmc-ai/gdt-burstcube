@@ -249,3 +249,44 @@ def test_regroup_edges_1024_to_64_covers_every_native_channel():
 def test_regroup_edges_rejects_a_finer_target():
     with pytest.raises(ValueError, match='must be coarser'):
         caldb.regroup_edges('CS0', 16, 64)
+
+
+def test_response_grid_derives_nside_from_the_row_count(tmp_path, monkeypatch):
+    """The grid's resolution comes from the CALDB simulation file's row
+    count, not a constant: 3072 rows -> nside 16. The response files
+    themselves record only their own PIXEL and ORDERING, never the total.
+    """
+    _block_downloads(monkeypatch)
+    grid = caldb.response_grid(cache_dir=tmp_path)
+
+    assert grid.num_pixels == 3072
+    assert grid.nside == 16
+    assert grid.ordering == 'RING'
+    np.testing.assert_array_equal(grid.pixel, np.arange(3072))
+
+
+def test_response_grid_angles_are_healpix_ring(tmp_path, monkeypatch):
+    """THETA/PHI reproduce healpy's RING pixel centres, which is the check
+    that the ORDERING keyword in the response files is the right one to
+    trust.
+    """
+    import healpy as hp
+
+    _block_downloads(monkeypatch)
+    grid = caldb.response_grid(cache_dir=tmp_path)
+
+    theta, phi = hp.pix2ang(grid.nside, grid.pixel, nest=False)
+    np.testing.assert_allclose(np.degrees(theta), grid.theta, atol=1e-3)
+    np.testing.assert_allclose(np.degrees(phi), grid.phi, atol=1e-3)
+
+    nest_theta, _ = hp.pix2ang(grid.nside, grid.pixel, nest=True)
+    assert not np.allclose(np.degrees(nest_theta), grid.theta, atol=1e-3)
+
+
+def test_response_module_constants_come_from_caldb(tmp_path, monkeypatch):
+    from gdt.missions.burstcube import response
+
+    _block_downloads(monkeypatch)
+    assert response.nside() == caldb.response_grid().nside
+    assert response.num_pixels() == caldb.response_grid().num_pixels
+    assert response.num_pixels() == 12 * response.nside() ** 2

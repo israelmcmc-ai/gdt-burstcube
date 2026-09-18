@@ -17,8 +17,25 @@ day's file can hold both.
 
 .. warning::
     :meth:`~gdt.missions.burstcube.hk.BurstCubeHK.peak_threshold` is *not*
-    that threshold, despite the name. ``PEAK_THRES`` is 6.0 mV for every
-    detector in every file in the archive and never changes.
+    that threshold, despite the name. ``PEAK_THRES`` is a pulse-shape cut --
+    how far a candidate sample must stand above its neighbours within the
+    ``PHA_WIN`` window to count as a peak rather than a shoulder -- where
+    ``BASE_THRES`` measures height above the running baseline. It reads
+    6.0 mV for every detector in every file in the archive and never
+    changes.
+
+Neither column is described in the archive caveats document or the archive
+guide. The ``DETECTOR_HK2`` ``TTYPE`` comments are the only documentation
+there is:
+
+.. code-block::
+
+   BASE_THRES   mV   Min lvl past baseline avg x valid IDAB peak
+   PEAK_THRES   mV   Min lvl past pre-post window x valid IDAB peak
+   PHA_WIN           Samples pre-post potential peak for IDAB events
+
+There is no equivalent in any Fermi GBM data product, so the GBM
+convention is no guide here.
 
 Per-detector accessors accept an int, a plain detector-name string (e.g.
 ``'CS0'``), or a :class:`~gdt.missions.burstcube.detectors.BurstCubeDetectors`

@@ -11,8 +11,10 @@ order, and the resolver logs which step actually satisfied the request:
 4. The bundled package data in ``gdt.missions.burstcube.data``, which is
    always present and lets everything in this plugin work fully offline.
 
-Only the 10 files needed for the offline plugin (the 4 detector alignment
-files, the SAA region, all 3 ebounds files, and both rebin files) are bundled;
+Only the 11 files needed for the offline plugin (the 4 detector alignment
+files, the SAA region, all 3 ebounds files, both rebin files, and the
+simulation file that defines the response grid's HEALPix resolution) are
+bundled;
 the CALDB response files are not (see ``BurstCubeRspFinder``, added in a later
 version of this plugin, which downloads only the response pixels actually
 needed for a calculation).
@@ -33,10 +35,10 @@ from astropy.io import fits
 
 from gdt.core.data_primitives import Ebounds
 
-__all__ = ['alignment', 'ebounds', 'rebin', 'regroup_edges', 'saa_region',
-           'resolve_caldb_file',
-          'Alignment', 'Rebinning', 'SaaRegion', 'CALDB_REMOTE_ROOT',
-          'DEFAULT_CACHE_DIR']
+__all__ = ['alignment', 'ebounds', 'rebin', 'regroup_edges', 'response_grid',
+           'saa_region', 'resolve_caldb_file',
+           'Alignment', 'Rebinning', 'ResponseGrid', 'SaaRegion',
+           'CALDB_REMOTE_ROOT', 'DEFAULT_CACHE_DIR']
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +57,7 @@ _BUNDLED_PACKAGE = 'gdt.missions.burstcube.data'
 _ALIGN_FILES = {f'CS{n}': f'bcf/align/bccs{n}_align_20210101v000.fits'
                for n in range(4)}
 _SAA_FILE = 'bcf/saa/bccsa_saareg_20230101v001.fits'
+_SIM_FILE = 'cpf/simloc/bccsa_sim_20221001v001.fits'
 _EBOUNDS_FILES = {16: 'cpf/ebounds/bccsa_eb16_20221001v001.fits',
                   64: 'cpf/ebounds/bccsa_eb64_20221001v001.fits',
                   1024: 'cpf/ebounds/bccsa_eb1024_20221001v001.fits'}
@@ -123,6 +126,37 @@ class SaaRegion:
     r: np.ndarray
     rotang: np.ndarray
     component: int
+
+
+@dataclass(frozen=True)
+class ResponseGrid:
+    """The HEALPix grid the detector response is tabulated on, from the
+    CALDB simulation file ``cpf/simloc/bccsa_sim_20221001v001.fits``.
+
+    That file has one row per grid pixel, carrying the pixel number and its
+    spacecraft-frame direction, so it -- not any hardcoded number -- is what
+    defines the grid's resolution. The response files themselves record only
+    their own ``PIXEL`` and ``ORDERING``, never the total.
+
+    Attributes:
+        pixel (numpy.ndarray): The HEALPix pixel numbers, ``0 .. npix - 1``
+        theta (numpy.ndarray): Each pixel's spacecraft-frame zenith angle,
+            in degrees
+        phi (numpy.ndarray): Each pixel's spacecraft-frame azimuth, in
+            degrees
+        nside (int): The HEALPix resolution parameter
+        ordering (str): The pixel ordering, ``'RING'``
+    """
+    pixel: np.ndarray
+    theta: np.ndarray
+    phi: np.ndarray
+    nside: int
+    ordering: str
+
+    @property
+    def num_pixels(self) -> int:
+        """(int): The number of pixels in the grid, ``12 * nside**2``."""
+        return int(self.pixel.size)
 
 
 def resolve_caldb_file(relative_path: Union[str, Path],
@@ -356,6 +390,49 @@ def regroup_edges(det, coarse: int, fine: int,
     return np.append(edges, coarse_starts.size)
 
 
+def response_grid(cache_dir: Optional[Path] = None) -> ResponseGrid:
+    """Retrieve the HEALPix grid the detector response is tabulated on.
+
+    The grid's resolution is read from the file rather than assumed: the
+    simulation file has one row per pixel, so ``nside`` follows from the row
+    count. Every archive file to date gives ``nside = 16`` (3072 pixels,
+    ``RING`` ordering), but a re-simulated grid at a different resolution
+    would be picked up here instead of silently disagreeing with a constant.
+
+    The ordering is ``RING``, which is what the response files' own
+    ``ORDERING`` keyword says and what the file's ``THETA``/``PHI`` columns
+    reproduce -- they match ``healpy.pix2ang(nside, ..., nest=False)`` to
+    better than a millidegree for all 3072 pixels, and do not match
+    ``nest=True`` at all.
+
+    Args:
+        cache_dir (Path, optional): The local CALDB cache directory. Defaults
+            to :data:`DEFAULT_CACHE_DIR`.
+
+    Returns:
+        (:class:`ResponseGrid`)
+
+    Raises:
+        ValueError: If the row count is not a valid HEALPix pixel count.
+    """
+    path = resolve_caldb_file(_SIM_FILE, cache_dir=cache_dir)
+    with fits.open(path) as hdulist:
+        data = hdulist['SIMULATION'].data
+        pixel = np.asarray(data['PIXEL'], dtype=int)
+        theta = np.asarray(data['THETA'], dtype=float)
+        phi = np.asarray(data['PHI'], dtype=float)
+
+    npix = pixel.size
+    nside = np.sqrt(npix / 12.0)
+    if nside != int(nside) or (int(nside) & (int(nside) - 1)) != 0:
+        raise ValueError(
+            f'{_SIM_FILE} has {npix} rows, which is not 12 * nside**2 for '
+            'any power-of-two nside, so it does not describe a HEALPix grid.')
+
+    return ResponseGrid(pixel=pixel, theta=theta, phi=phi,
+                        nside=int(nside), ordering='RING')
+
+
 def saa_region(cache_dir: Optional[Path] = None) -> SaaRegion:
     """Retrieve the CALDB South Atlantic Anomaly boundary polygon.
 
@@ -374,8 +451,11 @@ def saa_region(cache_dir: Optional[Path] = None) -> SaaRegion:
       numbers are stored in explicitly named ``_latitude`` and ``_longitude``
       lists -- and they line up with ``X`` and ``Y`` in that order.
 
-    The polygon is also left open in the file (19 vertices, first != last);
-    :class:`~gdt.missions.burstcube.saa.BurstCubeSaa` closes it.
+    Two more defects are left to
+    :class:`~gdt.missions.burstcube.saa.BurstCubeSaa`, which is what most
+    callers should use: the polygon is left open (19 vertices, first !=
+    last), and two pairs of vertices are listed out of order so that the
+    boundary crosses itself twice.
 
     Args:
         cache_dir (Path, optional): The local CALDB cache directory. Defaults

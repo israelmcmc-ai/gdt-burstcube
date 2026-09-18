@@ -115,30 +115,9 @@ class BurstCubeGTI(FitsFileContextManager):
         :class:`~gdt.core.tte.PhotonList` down to a GTI, e.g. to reproduce a
         ``_cl`` file's cut starting from its ``_uf`` counterpart.
 
-        gdt-core's own ``slice_time`` cannot be handed a trend GTI directly.
-        Two things go wrong, and both are consequences of the shapes these
-        files actually have rather than anything BurstCube-specific in the
-        slicing itself:
-
-        1. **Intervals that select nothing.** A trend GTI spans the whole
-           mission -- the SAA one has 586 intervals over five months --
-           while a single CBD or TTE file covers minutes to hours, so most
-           of its intervals match no data at all. ``slice_time`` builds
-           ``Gti.from_list([segment.time_range])`` for each requested range,
-           and an empty segment's ``time_range`` is ``None``, which raises
-           ``TypeError`` from inside the primitive. This method drops those
-           intervals first. Testing against the file's overall time range
-           would not be enough: BurstCube data is gappy, so an interval can
-           sit inside the span and still contain no bins.
-
-        2. **Disjoint intervals.** ``Phaii.slice_time`` accumulates a GTI by
-           *intersecting* each sliced segment's own range into a running
-           total, which empties as soon as two segments are disjoint and
-           then raises on the empty result. That accumulated value is dead
-           -- ``from_data`` is handed ``self.gti`` instead -- but it still
-           crashes on the way. This method slices one interval per call, so
-           that loop runs exactly once and never empties, then recombines
-           the pieces with ``merge``.
+        This exists because gdt-core's own ``slice_time`` cannot be handed a
+        real GTI directly; see the comments in the body for what goes wrong
+        and why.
 
         Args:
             gti (:class:`~gdt.core.data_primitives.Gti`): The GTI to apply
@@ -163,6 +142,16 @@ class BurstCubeGTI(FitsFileContextManager):
             def selects_data(low, high):
                 return bool(np.any((data.times >= low) & (data.times <= high)))
 
+        # Problem 1: most intervals of a real GTI select nothing. A trend GTI
+        # spans the whole mission -- the SAA one has 586 intervals over five
+        # months -- while a single CBD or TTE file covers minutes to hours.
+        # slice_time builds Gti.from_list([segment.time_range]) per requested
+        # range, and an empty segment's time_range is None, so it raises
+        # TypeError from inside the primitive rather than returning an empty
+        # result. Dropping those intervals here is the fix. Filtering on the
+        # file's overall time span instead would not be enough: BurstCube data
+        # is gappy, so an interval can sit inside the span and still contain
+        # no bins.
         overlapping = [(low, high) for low, high in gti.as_list()
                        if selects_data(low, high)]
 
@@ -179,5 +168,14 @@ class BurstCubeGTI(FitsFileContextManager):
         if len(overlapping) == 1:
             return data_obj.slice_time(overlapping)
 
+        # Problem 2: disjoint intervals empty slice_time's GTI accumulator.
+        # Phaii.slice_time intersects each sliced segment's own range into a
+        # running total, which goes empty as soon as two segments are
+        # disjoint, and the next iteration raises on the empty result -- even
+        # though that accumulated value is then discarded, since from_data is
+        # handed self.gti instead. Slicing one interval per call runs that
+        # loop exactly once, so it never empties; merge recombines the
+        # pieces. It fails on a CBD _uf file's own 4-segment STDGTI, not just
+        # on the mission-long trend files.
         pieces = [data_obj.slice_time([interval]) for interval in overlapping]
         return type(data_obj).merge(pieces)

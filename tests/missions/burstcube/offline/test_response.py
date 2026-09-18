@@ -10,8 +10,8 @@ from gdt.core.spectra.functions import PowerLaw
 
 from gdt.missions.burstcube import caldb
 from gdt.missions.burstcube.frame import BurstCubeFrame
-from gdt.missions.burstcube.response import (NSIDE, BurstCubeResponseGrid,
-                                             BurstCubeRsp)
+from gdt.missions.burstcube.response import (BurstCubeResponseGrid,
+                                             BurstCubeRsp, nside)
 
 
 def _synthetic_drm(num_ebins=20, num_chans=64, seed=0, scale=1.0):
@@ -138,7 +138,7 @@ def test_fold_is_linear():
 
 def test_get_interp_weights_sum_to_one():
     for theta_deg, phi_deg in [(2.0, 90.0), (45.0, 10.0), (170.0, 300.0), (0.0, 0.0)]:
-        _, weights = hp.get_interp_weights(NSIDE, np.radians(theta_deg),
+        _, weights = hp.get_interp_weights(nside(), np.radians(theta_deg),
                                            np.radians(phi_deg))
         assert weights.sum() == pytest.approx(1.0, abs=1e-10)
 
@@ -153,7 +153,7 @@ def test_interp_at_exact_pixel_centre_reproduces_nearest_pixel_drm():
             return _synthetic_rsp(detector=det_name, seed=pixel)
 
     grid = _FakeGrid(detectors='CS0')
-    theta0, phi0 = hp.pix2ang(NSIDE, 0)
+    theta0, phi0 = hp.pix2ang(nside(), 0)
     az0, zen0 = np.degrees(phi0), np.degrees(theta0)
 
     interp_rsp = grid.get_drm('CS0', az=az0, zen=zen0, interp=True)
