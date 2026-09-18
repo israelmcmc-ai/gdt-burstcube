@@ -283,10 +283,14 @@ def test_response_grid_angles_are_healpix_ring(tmp_path, monkeypatch):
     assert not np.allclose(np.degrees(nest_theta), grid.theta, atol=1e-3)
 
 
-def test_response_module_constants_come_from_caldb(tmp_path, monkeypatch):
+def test_response_module_has_no_grid_constants_of_its_own(tmp_path, monkeypatch):
+    """The response module reads the grid from CALDB at every use rather
+    than caching it in a module constant, so there is nothing to drift."""
     from gdt.missions.burstcube import response
 
     _block_downloads(monkeypatch)
-    assert response.nside() == caldb.response_grid().nside
-    assert response.num_pixels() == caldb.response_grid().num_pixels
-    assert response.num_pixels() == 12 * response.nside() ** 2
+    for name in ('NSIDE', 'NUM_PIXELS', 'nside', 'num_pixels'):
+        assert not hasattr(response, name)
+
+    grid = caldb.response_grid()
+    assert grid.num_pixels == 12 * grid.nside ** 2

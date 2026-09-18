@@ -42,10 +42,11 @@ Initial package foundation.
   boundary crosses itself twice. `BurstCubeSaa` sorts the vertices by angle
   about their centroid, but only when the file's own order self-intersects
   and sorting fixes it.
-- `response.NSIDE`/`NUM_PIXELS` are now `response.nside()`/`num_pixels()`,
-  derived from the CALDB simulation file's row count via the new
-  `caldb.response_grid()`. That file is bundled, so the grid stays
-  available offline (bundled CALDB: 10 files, 233 kB -> 11 files, 582 kB).
+- Removed `response.NSIDE`/`NUM_PIXELS`. The grid's resolution now comes from
+  `caldb.response_grid()`, which derives it from the CALDB simulation file's
+  row count; call sites read `.nside`/`.num_pixels` off it directly. That
+  file is bundled, so the grid stays available offline (bundled CALDB: 10
+  files, 233 kB -> 11 files, 582 kB).
 - Documented what `DETECTOR_HK2`'s `PEAK_THRES` actually is -- a pulse-shape
   cut, not an energy threshold -- from the file's own column comments, since
   nothing else in the archive documents either column.

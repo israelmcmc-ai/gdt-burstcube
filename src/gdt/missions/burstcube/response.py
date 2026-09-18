@@ -33,25 +33,8 @@ from gdt.core.response import Rsp
 from . import caldb
 from .headers import RspHeaders
 
-__all__ = ['BurstCubeResponseGrid', 'BurstCubeRsp', 'BurstCubeRspFinder',
-           'nside', 'num_pixels']
+__all__ = ['BurstCubeResponseGrid', 'BurstCubeRsp', 'BurstCubeRspFinder']
 
-def nside() -> int:
-    """The HEALPix resolution of the response grid, read from CALDB.
-
-    Returns:
-        (int): 16 for every archive release to date
-    """
-    return caldb.response_grid().nside
-
-
-def num_pixels() -> int:
-    """The number of pixels in the response grid, read from CALDB.
-
-    Returns:
-        (int): 3072 for every archive release to date
-    """
-    return caldb.response_grid().num_pixels
 
 #: The CALDB root for response files, under the same burstcube/csa release
 #: tree as the other CALDB products (see gdt.missions.burstcube.caldb).
@@ -73,7 +56,8 @@ def _hemisphere(pixel: int) -> str:
     Returns:
         (str): ``'th0_90'`` for pixels 0-1567, ``'th91_180'`` for 1568-3071
     """
-    return 'th0_90' if pixel < num_pixels() // 2 else 'th91_180'
+    return ('th0_90' if pixel < caldb.response_grid().num_pixels // 2
+            else 'th91_180')
 
 
 def _resolve_pixel_path(detector: str, pixel: int,
@@ -377,7 +361,8 @@ class BurstCubeResponseGrid:
             zen (float, optional): Spacecraft zenith angle, in degrees.
                 Requires `az`.
             pix (int, optional): A HEALPix pixel number (0 to
-                :func:`num_pixels` - 1). Bypasses interpolation: `interp` is
+                ``caldb.response_grid().num_pixels`` - 1). Bypasses interpolation:
+                `interp` is
                 ignored.
             skycoord (astropy.coordinates.SkyCoord, optional): A sky
                 position. Requires `frame` to carry a valid attitude
@@ -409,10 +394,11 @@ class BurstCubeResponseGrid:
         phi = np.radians(az)
 
         if not interp:
-            pixel = int(hp.ang2pix(nside(), theta, phi))
+            pixel = int(hp.ang2pix(caldb.response_grid().nside, theta, phi))
             return self._load_pixel(det_name, pixel)
 
-        pixels, weights = hp.get_interp_weights(nside(), theta, phi)
+        pixels, weights = hp.get_interp_weights(caldb.response_grid().nside,
+                                                theta, phi)
         matrices = [self._load_pixel(det_name, int(p)).drm.matrix for p in pixels]
         weighted_matrix = sum(w * m for w, m in zip(weights, matrices))
 
@@ -484,8 +470,9 @@ class BurstCubeRspFinder:
         """
         theta, phi = np.radians(zen), np.radians(az)
         if not interp:
-            return [int(hp.ang2pix(nside(), theta, phi))]
-        pixels, _ = hp.get_interp_weights(nside(), theta, phi)
+            return [int(hp.ang2pix(caldb.response_grid().nside, theta, phi))]
+        pixels, _ = hp.get_interp_weights(caldb.response_grid().nside,
+                                          theta, phi)
         return [int(p) for p in pixels]
 
     def get_pixels(self, detectors, pixels):

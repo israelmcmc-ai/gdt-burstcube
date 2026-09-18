@@ -2,11 +2,17 @@
 ``DETECTOR_HK2`` (60 s cadence) extensions of ``auxil/bcYYMMDDcsa.hk.gz``,
 each exposed as an :class:`~astropy.timeseries.TimeSeries`.
 
-Per archive caveat #7, the per-detector energy thresholds were raised mid-mission
-from ~21-30 keV to ~100 keV to suppress a non-Poissonian low-energy noise
-component; :meth:`~BurstCubeHK.peak_threshold` and
-:meth:`~BurstCubeHK.base_threshold` are how that change shows up in
-the housekeeping data.
+Per archive caveat #7 the per-detector energy thresholds were raised
+mid-mission to suppress a non-Poissonian low-energy noise component.
+:meth:`~BurstCubeHK.base_threshold` is how that shows up here.
+:meth:`~BurstCubeHK.peak_threshold` reads the other threshold column, which
+is a pulse-shape cut rather than an energy one and never moves; both
+docstrings spell out the difference.
+
+The keV figures caveat #7 quotes are on a different energy calibration from
+CALDB's, and read ~20% high against the archive's own scale -- see the
+README caveat *CALDB energy scale disagrees with caveat #7's threshold
+table*.
 """
 from astropy.timeseries import TimeSeries
 
