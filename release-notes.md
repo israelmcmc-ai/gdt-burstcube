@@ -50,4 +50,9 @@ Initial package foundation.
 - Documented what `DETECTOR_HK2`'s `PEAK_THRES` actually is -- a pulse-shape
   cut, not an energy threshold -- from the file's own column comments, since
   nothing else in the archive documents either column.
-- Renamed `BurstCubeSaa` to `BurstCubeSAA`.
+- Capitalised the acronyms in the remaining class names: `BurstCubeSaa` ->
+  `BurstCubeSAA`, `SaaRegion` -> `SAARegion`, `GtiHeaders` -> `GTIHeaders`,
+  `GtiTrendPrimaryHeader` -> `GTITrendPrimaryHeader`, `GtiTrendDataHeader`
+  -> `GTITrendDataHeader`, `CBDGtiHeader` -> `CBDGTIHeader`, `TTEGtiHeader`
+  -> `TTEGTIHeader`. The `Rsp*` classes and `BurstCubeObsId` keep their
+  current spelling.

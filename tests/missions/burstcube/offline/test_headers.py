@@ -13,7 +13,7 @@ from gdt.missions.burstcube import headers as h
     (h.OrbitHeaders, ['PRIMARY', 'ORBIT']),
     (h.AttitudeHeaders, ['PRIMARY', 'ATTITUDE']),
     (h.DetectorHKHeaders, ['PRIMARY', 'DETECTOR_HK1', 'DETECTOR_HK2']),
-    (h.GtiHeaders, ['PRIMARY', 'STDGTI']),
+    (h.GTIHeaders, ['PRIMARY', 'STDGTI']),
 ])
 def test_file_headers_construct_with_expected_extensions(cls, expected_extensions):
     """Every FileHeaders subclass must construct and expose exactly its

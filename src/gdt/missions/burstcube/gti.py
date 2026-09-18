@@ -20,7 +20,7 @@ import numpy as np
 from gdt.core.data_primitives import Gti
 from gdt.core.file import FitsFileContextManager
 
-from .headers import GtiHeaders
+from .headers import GTIHeaders
 
 __all__ = ['BurstCubeGTI']
 
@@ -50,7 +50,7 @@ class BurstCubeGTI(FitsFileContextManager):
         """
         obj = super().open(file_path, **kwargs)
         hdrs = [hdu.header for hdu in obj.hdulist]
-        obj._headers = GtiHeaders.from_headers(hdrs)
+        obj._headers = GTIHeaders.from_headers(hdrs)
         return obj
 
     @classmethod

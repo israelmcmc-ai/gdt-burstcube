@@ -121,7 +121,7 @@ class BurstCubeCBD(Phaii):
 
         hdrs = [hdu.header for hdu in obj.hdulist]
 
-        # The STDGTI extension comes in two schemas (see CBDGtiHeader): the
+        # The STDGTI extension comes in two schemas (see CBDGTIHeader): the
         # 2-column standard form and the 6-column form shared with TTE. Pick
         # by looking at the extension, not at the _uf/_cl filename, since
         # nothing in the files guarantees that correlation holds everywhere.

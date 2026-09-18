@@ -37,7 +37,7 @@ from gdt.core.data_primitives import Ebounds
 
 __all__ = ['alignment', 'ebounds', 'rebin', 'regroup_edges', 'response_grid',
            'saa_region', 'resolve_caldb_file',
-           'Alignment', 'Rebinning', 'ResponseGrid', 'SaaRegion',
+           'Alignment', 'Rebinning', 'ResponseGrid', 'SAARegion',
            'CALDB_REMOTE_ROOT', 'DEFAULT_CACHE_DIR']
 
 log = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ class Rebinning:
 
 
 @dataclass(frozen=True)
-class SaaRegion:
+class SAARegion:
     """The South Atlantic Anomaly boundary polygon, from
     ``bcf/saa/bccsa_saareg_20230101v001.fits``.
 
@@ -433,7 +433,7 @@ def response_grid(cache_dir: Optional[Path] = None) -> ResponseGrid:
                         nside=int(nside), ordering='RING')
 
 
-def saa_region(cache_dir: Optional[Path] = None) -> SaaRegion:
+def saa_region(cache_dir: Optional[Path] = None) -> SAARegion:
     """Retrieve the CALDB South Atlantic Anomaly boundary polygon.
 
     **The file's X and Y columns are swapped relative to its own header
@@ -462,12 +462,12 @@ def saa_region(cache_dir: Optional[Path] = None) -> SaaRegion:
             to :data:`DEFAULT_CACHE_DIR`.
 
     Returns:
-        (:class:`SaaRegion`)
+        (:class:`SAARegion`)
     """
     path = resolve_caldb_file(_SAA_FILE, cache_dir=cache_dir)
     with fits.open(path) as hdulist:
         row = hdulist['REGION'].data[0]
-    return SaaRegion(shape=str(row['SHAPE']).strip(),
+    return SAARegion(shape=str(row['SHAPE']).strip(),
                      latitude=np.asarray(row['X'], dtype=float),
                      longitude=np.asarray(row['Y'], dtype=float),
                      r=np.asarray(row['R'], dtype=float),
