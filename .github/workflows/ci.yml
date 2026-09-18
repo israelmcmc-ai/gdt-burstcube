@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and test dependencies
+        run: python -m pip install --upgrade pip && python -m pip install .[test]
+
+      # Only the offline test suite runs in CI: it uses synthetic fixtures
+      # and the bundled CALDB files, needs no network access, and needs no
+      # `gdt-data download burstcube` step. The data_driven suite is for
+      # local use against the real archive and skips cleanly when that data
+      # isn't present.
+      - name: Run offline tests
+        run: python -m pytest tests/missions/burstcube/offline -v

@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astro-gdt-burstcube"
+authors = [
+    { name = "The BurstCube Team" },
+]
+description = "Gamma-ray Data Tools: BurstCube Mission"
+readme = "PYPI-README.rst"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ['astronomy', 'gammaray', 'gamma-ray', 'burstcube']
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Software Development :: Libraries",
+]
+requires-python = ">=3.11"
+dependencies = [
+    'astro-gdt>=2.2.3',
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+docs = ["Sphinx==5.0.2", "astropy-sphinx-theme", "nbsphinx", "sphinx-automodapi"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"gdt.missions.burstcube.data" = [
+    'bccs0_align_20210101v000.fits',
+    'bccs1_align_20210101v000.fits',
+    'bccs2_align_20210101v000.fits',
+    'bccs3_align_20210101v000.fits',
+    'bccsa_saareg_20230101v001.fits',
+    'bccsa_sim_20221001v001.fits',
+    'bccsa_eb16_20221001v001.fits',
+    'bccsa_eb64_20221001v001.fits',
+    'bccsa_eb1024_20221001v001.fits',
+    'bccsa_reb16_20221001v001.fits',
+    'bccsa_reb64_20221001v001.fits',
+]
+"gdt.data" = ['burstcube.urls']
+
+[tool.setuptools.dynamic]
+version = { attr = "gdt.missions.burstcube.__version__" }
+
+[project.urls]
+Documentation = 'https://github.com/israelmcmc-ai/gdt-burstcube'
+Repository = 'https://github.com/israelmcmc-ai/gdt-burstcube'
+Issues = 'https://github.com/israelmcmc-ai/gdt-burstcube/issues'

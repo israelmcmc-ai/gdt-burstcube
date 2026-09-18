@@ -1,0 +1,12 @@
+astro-gdt>=2.2.3
+astro-gdt-burstcube
+numpy
+scipy
+matplotlib
+astropy
+healpy
+Sphinx==5.0.2
+astropy-sphinx-theme
+nbsphinx
+sphinx-automodapi
+ipython

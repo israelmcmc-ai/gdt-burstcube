@@ -1,0 +1,37 @@
+All derivative works must include the following attribution for the original authors and sources.
+
+This work is a derivative of, and depends upon, the Gamma-ray Data Tools (GDT) Core package,
+developed by the following:
+
+    William Cleveland and Adam Goldstein
+    Universities Space Research Association
+    Science and Technology Institute
+    https://sti.usra.edu
+
+    Daniel Kocevski
+    National Aeronautics and Space Administration (NASA)
+    Marshall Space Flight Center
+    Astrophysics Branch (ST-12)
+
+This work follows the structure and conventions established by the Gamma-ray Data Tools: Fermi
+package (gdt-fermi), developed by the same authors, which served as the design model for this
+BurstCube plugin.
+
+This work also draws on the BurstCube team's own analysis tools (bctools), in particular the
+detector response interpolation scheme implemented in
+`bctools.io.InstrumentResponse.get_drm`.
+
+Analysis performed with GDT and published needs to use the following citation:
+
+@misc{GDT-Core,
+      author = {Adam Goldstein and William H. Cleveland and Daniel Kocevski},
+      title = {Gamma-ray Data Tools Core Package: <version information>},
+      year = <year of release>,
+      url = {https://github.com/USRA-STI/gdt-core}
+}
+@misc{GDT-Fermi,
+      author = {Adam Goldstein and William H. Cleveland and Daniel Kocevski},
+      title = {Gamma-ray Data Tools Fermi Package: <version information>},
+      year = <year of release>,
+      url = {https://github.com/USRA-STI/gdt-fermi}
+}
