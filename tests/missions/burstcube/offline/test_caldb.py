@@ -197,8 +197,26 @@ class TestAlignmentAndSaa:
         assert saa.shape == 'POLYGON'
         assert len(saa.longitude) == 19
         assert len(saa.latitude) == 19
-        assert saa.longitude[0] == pytest.approx(-30.0, abs=1e-3)
-        assert saa.latitude[0] == pytest.approx(33.9, abs=1e-3)
+
+    def test_saa_region_x_is_latitude_and_y_is_longitude(self, tmp_path,
+                                                        monkeypatch):
+        """The file's TTYPE comments call X "Satellite Earth Longitude" and Y
+        "Satellite Earth Latitude". The values say the opposite, and the
+        reader follows the values.
+        """
+        _block_downloads(monkeypatch)
+        saa = caldb.saa_region(cache_dir=tmp_path)
+
+        assert saa.latitude[0] == pytest.approx(-30.0, abs=1e-3)   # X
+        assert saa.longitude[0] == pytest.approx(33.9, abs=1e-3)   # Y
+
+        # read as labelled, the "latitude" would run past the south pole
+        assert saa.longitude.min() == pytest.approx(-94.3, abs=1e-3)
+        assert -90.0 <= saa.latitude.min() <= saa.latitude.max() <= 90.0
+
+        # and the result is the South Atlantic Anomaly's actual footprint
+        assert -54.0 < saa.latitude.min() < -53.0
+        assert 1.9 < saa.latitude.max() < 2.1
 
 
 def test_regroup_edges_compose_the_two_caldb_schemes():

@@ -100,10 +100,18 @@ class SaaRegion:
     """The South Atlantic Anomaly boundary polygon, from
     ``bcf/saa/bccsa_saareg_20230101v001.fits``.
 
+    The file's ``X`` and ``Y`` columns are **latitude and East longitude
+    respectively**, which is the opposite of what its own ``TTYPE`` comments
+    say ("Satellite Earth Longitude" for ``X``, "Satellite Earth Latitude"
+    for ``Y``). The reader follows the values, not the comments -- see
+    :func:`saa_region`.
+
     Attributes:
         shape (str): The region shape, e.g. ``'POLYGON'``
         longitude (numpy.ndarray): The vertex East longitudes, in degrees
-        latitude (numpy.ndarray): The vertex latitudes, in degrees
+            (the file's ``Y`` column)
+        latitude (numpy.ndarray): The vertex latitudes, in degrees (the
+            file's ``X`` column)
         r (numpy.ndarray): The ``R`` column (unused for a polygon shape)
         rotang (numpy.ndarray): The ``ROTANG`` column (unused for a polygon
             shape)
@@ -351,6 +359,24 @@ def regroup_edges(det, coarse: int, fine: int,
 def saa_region(cache_dir: Optional[Path] = None) -> SaaRegion:
     """Retrieve the CALDB South Atlantic Anomaly boundary polygon.
 
+    **The file's X and Y columns are swapped relative to its own header
+    comments**, and this reader corrects for it: ``X`` is taken as latitude
+    and ``Y`` as East longitude, although ``TTYPE2``/``TTYPE3`` are commented
+    "Satellite Earth Longitude" and "Satellite Earth Latitude". Two
+    independent checks say so:
+
+    * ``Y`` reaches -94.3 deg, which is not a latitude. Read the other way
+      round the polygon spans 53.6S-2.0N by 94.3W-33.9E, which is the South
+      Atlantic Anomaly; read as labelled it is a thin band off the coast of
+      Brazil that the orbit crosses at the wrong times.
+    * The first 11 vertices are numerically identical to Fermi GBM's
+      ``GbmSaaPolygon5`` (``gdt.missions.fermi.gbm.saa``), where the same
+      numbers are stored in explicitly named ``_latitude`` and ``_longitude``
+      lists -- and they line up with ``X`` and ``Y`` in that order.
+
+    The polygon is also left open in the file (19 vertices, first != last);
+    :class:`~gdt.missions.burstcube.saa.BurstCubeSaa` closes it.
+
     Args:
         cache_dir (Path, optional): The local CALDB cache directory. Defaults
             to :data:`DEFAULT_CACHE_DIR`.
@@ -362,8 +388,8 @@ def saa_region(cache_dir: Optional[Path] = None) -> SaaRegion:
     with fits.open(path) as hdulist:
         row = hdulist['REGION'].data[0]
     return SaaRegion(shape=str(row['SHAPE']).strip(),
-                     longitude=np.asarray(row['X'], dtype=float),
-                     latitude=np.asarray(row['Y'], dtype=float),
+                     latitude=np.asarray(row['X'], dtype=float),
+                     longitude=np.asarray(row['Y'], dtype=float),
                      r=np.asarray(row['R'], dtype=float),
                      rotang=np.asarray(row['ROTANG'], dtype=float),
                      component=int(row['COMPONENT']))

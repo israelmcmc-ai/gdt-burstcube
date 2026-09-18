@@ -244,6 +244,41 @@ same data through the plugin's binning API.
 
 This problem is **not** described in the official caveats document either.
 
+CALDB SAA polygon: X is latitude, Y is longitude
+-------------------------------------------------------------
+
+``bcf/saa/bccsa_saareg_20230101v001.fits`` defines the SAA boundary as a
+19-vertex polygon in two columns, ``X`` and ``Y``. Its own header comments
+label them:
+
+.. code-block::
+
+   TTYPE2 = 'X'   / Satellite Earth Longitude
+   TTYPE3 = 'Y'   / Satellite Earth Latitude
+
+**The labels are the wrong way round.** Read as written, ``Y`` reaches
+-94.3 degrees, which is 4 degrees past the south pole, and the polygon
+becomes a narrow band off the coast of Brazil that the orbit crosses at the
+wrong times. Read with ``X`` as latitude and ``Y`` as East longitude, it
+spans 53.6S-2.0N by 94.3W-33.9E -- the South Atlantic Anomaly.
+
+An independent check settles it: the first 11 vertices are numerically
+identical to Fermi GBM's ``GbmSaaPolygon5``
+(``gdt.missions.fermi.gbm.saa``), where the same numbers are stored in
+lists named ``_latitude`` and ``_longitude``, and they line up with ``X``
+and ``Y`` in that order. BurstCube's polygon is GBM's, extended by 8 more
+vertices to the west.
+
+The file also leaves the polygon **open** -- the 19th vertex does not repeat
+the first -- so plotting the columns directly draws a broken outline.
+
+``gdt.missions.burstcube.caldb.saa_region`` reads the columns in the
+corrected order, and ``BurstCubeSaa`` appends a 20th vertex to close the
+polygon. Closing it changes no containment result, since
+``matplotlib.path.Path`` closes an open polygon implicitly; it only affects
+what is drawn and what ``is_closed()`` reports. If you read the file
+yourself rather than through this plugin, swap the columns.
+
 Timeline UTC column is 37 seconds off its own MET column
 -------------------------------------------------------------
 

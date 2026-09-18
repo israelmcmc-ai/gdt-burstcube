@@ -25,3 +25,16 @@ Initial package foundation.
 - Licensed under MIT, matching the BurstCube team's `bctools`. Per-file license
   headers are gone; `LICENSE` and `NOTICE` carry the terms and the attribution
   owed to the GDT Core authors.
+- Corrected the CALDB SAA polygon's column mapping: the region file's `X` is
+  latitude and `Y` is longitude, the opposite of its own `TTYPE` comments.
+  `BurstCubeSaa` also closes the polygon, which the file leaves open. Both
+  are cross-checked against Fermi GBM's `GbmSaaPolygon5`, whose first 11
+  vertices BurstCube's polygon reproduces exactly.
+- Renamed `BurstCubeGti` to `BurstCubeGTI` and moved `intersect`, `union`,
+  `complement` and `apply_to` onto it as class methods.
+- Added `caldb.regroup_edges()`, composing a coarse-to-fine channel regroup
+  from CALDB's own rebinning tables instead of a hardcoded index list.
+- Added `BurstCubeObsFinder.obs_id_from()` and an `obs_id` property.
+- Documented that `DETECTOR_HK2`'s `BASE_THRES`, not `PEAK_THRES`, carries
+  caveat #7's mid-mission energy threshold change, and that the energy it
+  corresponds to in CALDB's scale is ~20% below caveat #7's table.
