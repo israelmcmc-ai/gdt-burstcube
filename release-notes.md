@@ -66,6 +66,13 @@ Initial package foundation.
   channel range without regrouping it (unlike `to_cbd()`), for excluding
   channels that carry no counts -- e.g. below a detector's energy
   threshold -- before a spectral fit.
+- Added `examples/timeline_utc_vs_met.py`, the minimal reproduction of the
+  *Timeline UTC column is 37 seconds off its own MET column* caveat. It
+  derives the epoch from a CBD file's own `MJDREFI`/`MJDREFF`/`TIMESYS`
+  keywords, reproduces that file's `DATE-OBS`/`DATE-END` exactly, and then
+  misses the trend timeline's own UTC column by exactly 37.000 s on all 505
+  rows. It uses no GDT package -- only `astropy` and the standard library --
+  so it can be run without installing this plugin.
 - Added notebook 4, a worked joint BurstCube/GBM analysis of GRB 240629A:
   trigger discovery via GBM's own catalogs (`astro-gdt-fermi`), a light
   curve overlay, attitude/response, background fitting, and a spectral fit

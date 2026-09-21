@@ -69,3 +69,13 @@ they need and reproduce one specific result:
 * ``examples/tte_gaps_vs_cbd.py`` -- plots TTE's recording gaps against the
   CBD rate over the same interval, the minimal reproduction of the README
   caveat *TTE gaps*.
+
+* ``examples/timeline_utc_vs_met.py`` -- applies the MET epoch, taken from a
+  CBD file's own ``MJDREFI``/``MJDREFF``/``TIMESYS`` keywords, to that file's
+  ``TSTART``/``TSTOP`` and to the trend timeline's MET column: the first
+  reproduces the file's own ``DATE-OBS``/``DATE-END`` exactly, the second
+  misses the timeline's own UTC column by exactly 37.000 s on all 505 rows.
+  The minimal reproduction of the README caveat *Timeline UTC column is 37
+  seconds off its own MET column*. Unlike the other scripts here it uses no
+  GDT package at all -- only ``astropy`` and the standard library -- so it
+  can be run without installing this plugin.
