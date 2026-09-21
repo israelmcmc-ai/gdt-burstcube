@@ -19,16 +19,16 @@ src/gdt/missions/burstcube/    the plugin
     data/                     11 bundled CALDB files (582 kB)
 src/gdt/data/burstcube.urls   20 real archive files, for gdt-data download
 tests/missions/burstcube/
-    offline/                  153 tests, synthetic fixtures + bundled CALDB
+    offline/                  157 tests, synthetic fixtures + bundled CALDB
     data_driven/              38 tests, real archive files, skip if absent
-docs/notebooks/               3 tutorials, committed with real outputs
+docs/notebooks/               4 tutorials, committed with real outputs
 examples/tte_gaps_vs_cbd.py   standalone reproduction of the TTE-gaps caveat
 ```
 
 ## Commands
 
 ```sh
-python -m pytest tests -q                              # all 191
+python -m pytest tests -q                              # all 195
 python -m pytest tests/missions/burstcube/offline -q   # no network needed
 gdt-data download burstcube                            # fetch data_driven files
 python -m build --wheel                                # check package data ships
@@ -135,8 +135,9 @@ is intentional.
 
 ## gdt-core issues encountered
 
-Tracked in [#3](https://github.com/israelmcmc-ai/gdt-burstcube/issues/3) and
-[#4](https://github.com/israelmcmc-ai/gdt-burstcube/issues/4), both labelled
+Tracked in [#3](https://github.com/israelmcmc-ai/gdt-burstcube/issues/3),
+[#4](https://github.com/israelmcmc-ai/gdt-burstcube/issues/4) and
+[#5](https://github.com/israelmcmc-ai/gdt-burstcube/issues/5), all labelled
 `dependencies`:
 
 - `ChannelEffectiveArea` plots `photon_effective_area()` under a "Channel
@@ -148,6 +149,10 @@ Tracked in [#3](https://github.com/israelmcmc-ai/gdt-burstcube/issues/3) and
   `time_range is None`; disjoint segments empty its cumulative accumulator).
   `BurstCubeGTI.apply_to` works around both; the comments in its body explain
   how.
+- `Phaii.to_pha()` hardcodes the GBM `'SPECTRUM'` FITS extension name when
+  copying header keywords, so it raises `KeyError` on any mission whose data
+  extension is named something else. `BurstCubeCBD.to_pha()` overrides it,
+  pointed at `'CBD'`.
 
 ## Workflow
 

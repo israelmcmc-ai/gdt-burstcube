@@ -1,5 +1,9 @@
 astro-gdt>=2.2.3
 astro-gdt-burstcube
+# only for notebook 4 (GRB 240629A), which pulls GBM's own trigger/burst
+# catalogs and TTE for comparison; not a runtime dependency of the plugin
+# itself, and not needed to build the docs (nbsphinx_execute='never')
+astro-gdt-fermi
 numpy
 scipy
 matplotlib

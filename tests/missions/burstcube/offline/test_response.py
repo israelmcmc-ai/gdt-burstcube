@@ -92,6 +92,35 @@ def test_to_cbd_uses_caldb_eb16_energies_not_rsp_internal(monkeypatch):
     assert cbd_rsp.ebounds.high_edges()[-1] != pytest.approx(1000.0)
 
 
+def test_slice_channels_keeps_range_untouched_and_drops_the_rest(monkeypatch):
+    """slice_channels selects channels; unlike to_cbd it does not regroup
+    them, so each kept channel's own column of the DRM (and its own ebounds
+    edges) should be untouched, not merged or reweighted.
+    """
+    _block_caldb_downloads(monkeypatch)
+    rsp = _synthetic_rsp(num_chans=16)
+
+    sliced = rsp.slice_channels(2, 15)
+
+    assert sliced.num_chans == 14
+    np.testing.assert_allclose(sliced.drm.matrix, rsp.drm.matrix[:, 2:16])
+    np.testing.assert_allclose(sliced.ebounds.low_edges(),
+                               rsp.ebounds.low_edges()[2:16])
+    np.testing.assert_allclose(sliced.ebounds.high_edges(),
+                               rsp.ebounds.high_edges()[2:16])
+
+
+def test_slice_channels_out_of_range_raises(monkeypatch):
+    _block_caldb_downloads(monkeypatch)
+    rsp = _synthetic_rsp(num_chans=16)
+
+    with pytest.raises(ValueError):
+        rsp.slice_channels(15, 2)  # start after stop
+
+    with pytest.raises(ValueError):
+        rsp.slice_channels(0, 16)  # stop out of bounds (0-indexed, 16 chans)
+
+
 def test_caldb_regroup_edges_have_17_entries_for_16_channels():
     """Regression for the spec-section-21 correction: a 16-entry list
     (omitting the trailing 63) silently gives 15 channels while still

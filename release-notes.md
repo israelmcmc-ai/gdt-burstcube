@@ -56,3 +56,18 @@ Initial package foundation.
   -> `GTITrendDataHeader`, `CBDGtiHeader` -> `CBDGTIHeader`, `TTEGtiHeader`
   -> `TTEGTIHeader`. The `Rsp*` classes and `BurstCubeObsId` keep their
   current spelling.
+- Added `BurstCubeCBD.to_pha()`, overriding gdt-core's `Phaii.to_pha()`,
+  which unconditionally reads `self.headers['SPECTRUM']` to copy FITS
+  keywords into the new `Pha`'s header -- a GBM PHAII convention for the
+  data extension's name. BurstCube's own data extension is `CBD`, so the
+  base implementation raised `KeyError` before doing any of the actual time
+  integration; this override is otherwise identical, pointed at `CBD`.
+- Added `BurstCubeRsp.slice_channels()`, restricting a DRM to a contiguous
+  channel range without regrouping it (unlike `to_cbd()`), for excluding
+  channels that carry no counts -- e.g. below a detector's energy
+  threshold -- before a spectral fit.
+- Added notebook 4, a worked joint BurstCube/GBM analysis of GRB 240629A:
+  trigger discovery via GBM's own catalogs (`astro-gdt-fermi`), a light
+  curve overlay, attitude/response, background fitting, and a spectral fit
+  -- a clean non-detection with a 90% upper limit, about 27x below GBM's
+  own fluence-averaged energy flux.

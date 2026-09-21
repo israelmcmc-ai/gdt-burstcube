@@ -248,3 +248,37 @@ def test_rebin_works_when_short_bins_would_otherwise_overlap(tmp_path):
     rebinned = cbd.rebin_time(combine_by_factor, 2)
     assert rebinned.data.num_times == n // 2
     assert rebinned.data.counts.sum() == cbd.data.counts.sum()
+
+
+def test_to_pha_does_not_crash_on_missing_spectrum_extension(tmp_path):
+    """gdt-core's Phaii.to_pha unconditionally reads self.headers['SPECTRUM']
+    to copy FITS keywords into the new Pha's header. That extension name is
+    a GBM PHAII convention; BurstCube's own data extension is named 'CBD',
+    so the base implementation raises KeyError before doing any of the
+    actual time integration. This is a regression test for the override
+    that fixes it.
+    """
+    path = tmp_path / 'cbd.fits'
+    time, counts = make_cbd_fits(path)
+    cbd = BurstCubeCBD.open(path)
+
+    assert 'SPECTRUM' not in cbd.headers.keys()
+    assert 'CBD' in cbd.headers.keys()
+
+    pha = cbd.to_pha()
+    assert pha.num_chans == 16
+    assert pha.data.counts.sum() == counts.sum()
+
+
+def test_to_pha_time_range_selects_the_expected_counts(tmp_path):
+    path = tmp_path / 'cbd.fits'
+    time, counts = make_cbd_fits(path)
+    cbd = BurstCubeCBD.open(path)
+
+    tstart = time - TIMEDEL_CBD
+    half = time.size // 2
+    pha = cbd.to_pha(time_ranges=[(tstart[0], time[half])])
+
+    expected = counts[:half + 1].sum(axis=0)
+    np.testing.assert_array_equal(pha.data.counts, expected)
+    np.testing.assert_allclose(pha.exposure, TIMEDEL_CBD * (half + 1))

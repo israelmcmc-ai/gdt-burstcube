@@ -270,6 +270,58 @@ class BurstCubeRsp(Rsp):
         rsp._pixel = self.pixel
         return rsp
 
+    def slice_channels(self, chan_start, chan_stop):
+        """Restrict this DRM to a contiguous range of recorded-energy
+        channels, dropping the rest -- e.g. to exclude channels below a
+        detector's energy threshold before a spectral fit, where they carry
+        no counts and (per archive caveat #7 and the mid-mission threshold
+        change) never will. This selects channels; it does not regroup them,
+        unlike :meth:`to_cbd` -- each kept channel is untouched.
+
+        A :class:`~gdt.core.spectra.fitting.SpectralFitter` needs its PHA,
+        background, and response objects to all have the same channel count
+        and boundaries, so slice the corresponding
+        :class:`~gdt.core.phaii.Phaii` (and anything derived from it, such
+        as a :class:`~gdt.core.background.primitives.BackgroundRates`) the
+        same way, with :meth:`~gdt.core.phaii.Phaii.slice_energy` over the
+        matching energy range -- this DRM's own :attr:`~gdt.core.response.Rsp.ebounds`
+        gives that range.
+
+        Args:
+            chan_start (int): The first channel to keep
+            chan_stop (int): The last channel to keep, inclusive
+
+        Returns:
+            (:class:`BurstCubeRsp`)
+
+        Raises:
+            ValueError: If the range is empty or out of bounds
+        """
+        if not 0 <= chan_start <= chan_stop < self.num_chans:
+            raise ValueError(
+                f'chan_start={chan_start}, chan_stop={chan_stop} is not a '
+                f'valid range for {self.num_chans} channels (0 to '
+                f'{self.num_chans - 1}).')
+
+        edge_indices = list(range(chan_start, chan_stop + 2))
+        sliced = self.drm.rebin(edge_indices=edge_indices)
+
+        eb = self.ebounds
+        final_drm = ResponseMatrix(sliced.matrix,
+                                   sliced.photon_bins.low_edges(),
+                                   sliced.photon_bins.high_edges(),
+                                   eb.low_edges()[chan_start:chan_stop + 1],
+                                   eb.high_edges()[chan_start:chan_stop + 1])
+
+        rsp = BurstCubeRsp.from_data(final_drm, filename=self.filename,
+                                     start_time=self.tstart,
+                                     stop_time=self.tstop,
+                                     trigger_time=self.trigtime,
+                                     headers=self.headers,
+                                     detector=self.detector)
+        rsp._pixel = self.pixel
+        return rsp
+
     def _build_headers(self, num_chans, num_ebins):
         headers = self.headers.copy()
         headers['EBOUNDS']['DETCHANS'] = num_chans

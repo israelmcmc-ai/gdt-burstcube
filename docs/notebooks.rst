@@ -17,6 +17,7 @@ workaround, rather than hiding it.
    notebooks/1_data_types_and_binning
    notebooks/2_response
    notebooks/3_ancillary
+   notebooks/4_grb_240629a
 
 ----
 
@@ -42,6 +43,20 @@ reconstructed attitude epochs in the whole archive, supplying your own
 attitude quaternion, GTI and SAA filtering, detector housekeeping (enable
 flags and energy thresholds), the mission timeline (and its known 37 s UTC
 offset), and the ``burcbmastr`` observation catalog.
+
+**4. GRB 240629A: A Joint BurstCube/GBM Worked Example** -- a complete
+worked analysis of one real burst, chaining the previous 3 notebooks'
+pieces together the way a real analysis would: getting the trigger time,
+T90, and sky position from GBM's own Trigger and Burst Catalogs (via
+``astro-gdt-fermi``); downloading and plotting the corresponding BurstCube
+light curve, individually and summed across detectors, against GBM's own
+(binning GBM's unbinned TTE onto BurstCube's bin edges, since GBM's CTIME
+uses adaptive rather than fixed time binning); confirming which of
+BurstCube's 3 reconstructed attitude epochs actually covers the trigger and
+using it to get the response; a background fit excluding GBM's T90 plus a
+10 s buffer; and a joint 4-detector power-law spectral fit. The result is a
+clean non-detection and a 90% upper limit -- not a burst BurstCube saw, but
+a fully worked, honestly reported analysis of the case where it did not.
 
 ----
 

@@ -107,6 +107,92 @@ class BurstCubeCBD(Phaii):
         """
         return self._blended
 
+    def to_pha(self, time_ranges=None, energy_range=None, channel_range=None,
+              **kwargs):
+        """Integrate over time to produce a
+        :class:`~gdt.core.pha.Pha`, for folding through a detector response
+        with :class:`~gdt.core.spectra.fitting.SpectralFitter`.
+
+        This overrides :meth:`gdt.core.phaii.Phaii.to_pha` to work around a
+        hardcoded assumption in the base implementation: it copies FITS
+        keywords into the new ``Pha``'s header by reading
+        ``self.headers['SPECTRUM']`` -- the name of the data extension in a
+        GBM PHAII file. BurstCube's own data extension is named ``CBD``, so
+        that lookup raises ``KeyError: 'SPECTRUM header does not exist'``
+        for every BurstCube file, before any of the actual integration runs.
+        This method is otherwise identical to the base implementation, with
+        the extension name corrected; :meth:`~gdt.core.pha.Pha.from_data`
+        itself falls back to a generic, always-present header (with its own
+        ``SPECTRUM`` extension) when none is supplied, so nothing else needs
+        to change.
+
+        Args:
+            time_ranges ([(float, float), ...], optional): The time range of
+                the spectrum. If omitted, uses the entire time range of the
+                data.
+            energy_range ((float, float), optional): The energy range of the
+                spectrum. If omitted, uses the entire energy range of the
+                data.
+            channel_range ((int, int), optional): The channel range of the
+                spectrum. If omitted, uses the entire energy range of the
+                data.
+            **kwargs: Options passed to :meth:`~gdt.core.pha.Pha.from_data`
+
+        Returns:
+            (:class:`~gdt.core.pha.Pha`)
+        """
+        from gdt.core.data_primitives import EnergyBins, TimeChannelBins
+        from gdt.core.pha import Pha
+
+        if isinstance(self.data, TimeChannelBins):
+            raise RuntimeError('Energy calibration required to create a PHA object')
+
+        if time_ranges is None:
+            time_ranges = [self.time_range]
+        time_ranges = self._assert_range_list(time_ranges)
+        specs = []
+        times = []
+        for time_range in time_ranges:
+            spec = self.to_spectrum(time_range=time_range,
+                                    energy_range=energy_range,
+                                    channel_range=channel_range)
+
+            lomask = (self.data.emin < spec.range[0])
+            pre_counts = np.zeros(np.sum(lomask), dtype=int)
+            pre_lo_edges = self.data.emin[lomask]
+            pre_hi_edges = self.data.emax[lomask]
+
+            himask = (self.data.emax > spec.range[1])
+            post_counts = np.zeros(np.sum(himask), dtype=int)
+            post_lo_edges = self.data.emin[himask]
+            post_hi_edges = self.data.emax[himask]
+
+            counts = np.concatenate((pre_counts, spec.counts, post_counts))
+            lo_edges = np.concatenate((pre_lo_edges, spec.lo_edges,
+                                       post_lo_edges))
+            hi_edges = np.concatenate((pre_hi_edges, spec.hi_edges,
+                                       post_hi_edges))
+            one_spec = EnergyBins(counts, lo_edges, hi_edges, spec.exposure[0])
+            specs.append(one_spec)
+
+            times.append(self.data.slice_time(*time_range).time_range)
+
+        data = EnergyBins.sum(specs)
+        channel_mask = ~(lomask | himask)
+
+        gti = Gti.from_list(times)
+
+        # the base implementation's header-copy step, pointed at BurstCube's
+        # own data extension ('CBD') rather than the GBM-specific 'SPECTRUM'
+        if self._headers is not None and 'CBD' in self._headers.keys():
+            for key, value in self._headers['CBD'].items():
+                kwargs[key] = value
+
+        pha = Pha.from_data(data, gti=gti, trigger_time=self.trigtime,
+                            channel_mask=channel_mask, **kwargs)
+
+        return pha
+
     @classmethod
     def open(cls, file_path, **kwargs):
         """Open a BurstCube CBD FITS file.
