@@ -22,8 +22,9 @@ tests/missions/burstcube/
     offline/                  157 tests, synthetic fixtures + bundled CALDB
     data_driven/              38 tests, real archive files, skip if absent
 docs/notebooks/               4 tutorials, committed with real outputs
-examples/                     standalone caveat reproductions (TTE gaps;
-                              timeline UTC vs MET, which uses no GDT package)
+examples/                     3 standalone scripts: TTE gaps (uses the
+                              plugin); timeline UTC vs MET and the GRB
+                              240629A light curve (no GDT package at all)
 ```
 
 ## Commands

@@ -76,6 +76,12 @@ they need and reproduce one specific result:
   reproduces the file's own ``DATE-OBS``/``DATE-END`` exactly, the second
   misses the timeline's own UTC column by exactly 37.000 s on all 505 rows.
   The minimal reproduction of the README caveat *Timeline UTC column is 37
-  seconds off its own MET column*. Unlike the other scripts here it uses no
-  GDT package at all -- only ``astropy`` and the standard library -- so it
-  can be run without installing this plugin.
+  seconds off its own MET column*. Uses no GDT package at all -- only
+  ``astropy`` and the standard library -- so it can be run without
+  installing this plugin.
+
+* ``examples/grb240629a_lightcurve.py`` -- plots the summed CS0-CS3 CBD light
+  curve around GRB 240629A against the Fermi GBM trigger time as ``t0``, with
+  the archive's own ``TIME_SYST_ERROR`` column on a shared time axis. The
+  burst appears about 34 s after ``t0`` while the quoted uncertainty over the
+  same window is a flat 0.500 s. Also uses no GDT package.

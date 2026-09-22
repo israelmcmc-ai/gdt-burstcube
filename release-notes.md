@@ -73,6 +73,11 @@ Initial package foundation.
   misses the trend timeline's own UTC column by exactly 37.000 s on all 505
   rows. It uses no GDT package -- only `astropy` and the standard library --
   so it can be run without installing this plugin.
+- Added `examples/grb240629a_lightcurve.py`, which plots the summed CS0-CS3
+  CBD light curve around GRB 240629A against the Fermi GBM trigger time as
+  `t0`, with the archive's own `TIME_SYST_ERROR` column on a shared time
+  axis: the burst appears ~34 s after `t0` while the quoted uncertainty is a
+  flat 0.500 s. Like `timeline_utc_vs_met.py` it uses no GDT package.
 - Added notebook 4, a worked joint BurstCube/GBM analysis of GRB 240629A:
   trigger discovery via GBM's own catalogs (`astro-gdt-fermi`), a light
   curve overlay, attitude/response, background fitting, and a spectral fit
