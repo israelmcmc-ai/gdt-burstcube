@@ -172,4 +172,31 @@ def test_obs_id_from_agrees_with_the_burstcube_obsid_time_format():
     so the two must not drift apart."""
     for met in (107629263.5, 114214208.4, 100000000.0):
         time = Time(met, format='burstcube')
-        assert BurstCubeObsFinder.obs_id_from(time) == time.burstcube_obsid
+        assert BurstCubeObsFinder.obs_id_from(time) == time.utc.burstcube_obsid
+
+
+def test_obs_id_from_handles_a_met_near_a_utc_day_boundary():
+    """A `Time(met, format='burstcube')` is natively in TAI (the corrected
+    MET epoch's scale), not UTC -- see the note in obs_id_from's docstring.
+    Near a UTC day boundary, a naive `when.burstcube_obsid` (reading
+    whatever scale the Time is already in) can disagree with the true UTC
+    day by up to the fixed 37 s TAI-UTC offset, which would route a file to
+    the wrong day directory. obs_id_from must convert to UTC first and get
+    the boundary right regardless.
+    """
+    from gdt.missions.burstcube.time import Time as BurstCubeTime
+
+    # 20 s before UTC midnight 2024-05-30/31: within the 37 s window where a
+    # scale mix-up flips the day.
+    met = BurstCubeTime('2024-05-30T23:59:40', format='isot', scale='utc').burstcube
+    time = BurstCubeTime(met, format='burstcube')
+
+    # the premise: the Time object's native scale is TAI, and reading
+    # burstcube_obsid off it directly (skipping the UTC conversion) gives
+    # the *wrong* day for this MET.
+    assert time.scale == 'tai'
+    assert time.burstcube_obsid == '240531'
+
+    # obs_id_from must not make that mistake.
+    assert BurstCubeObsFinder.obs_id_from(time) == '240530'
+    assert BurstCubeObsFinder.obs_id_from(time) == time.utc.burstcube_obsid

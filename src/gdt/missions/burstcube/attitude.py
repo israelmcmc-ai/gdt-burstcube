@@ -18,7 +18,7 @@ from gdt.core.file import FitsFileContextManager
 from .detectors import BurstCubeDetectors
 from .frame import BurstCubeFrame
 from .headers import AttitudeHeaders
-from .time import Time
+from .time import Time, check_met_epoch
 
 __all__ = ['BurstCubeAttitude']
 
@@ -73,6 +73,7 @@ class BurstCubeAttitude(FitsFileContextManager):
         obj = super().open(file_path, **kwargs)
         hdrs = [hdu.header for hdu in obj.hdulist]
         obj._headers = AttitudeHeaders.from_headers(hdrs)
+        check_met_epoch(obj._headers['ATTITUDE'])
         return obj
 
     def frame(self, row: int) -> BurstCubeFrame:

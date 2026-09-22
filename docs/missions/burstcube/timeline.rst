@@ -9,14 +9,18 @@ BurstCube Mission Timeline (:mod:`gdt.missions.burstcube.timeline`)
 of spacecraft/instrument events: a 3-column file with no header row (MET,
 UTC-string, event description).
 
-**The CSV's own UTC column is wrong by exactly +37 s**, verified against its
-own MET column, evidently from treating MET as TAI seconds since the epoch
-and omitting the TAI-UTC leap-second offset. This reader parses and converts
-the MET column (authoritative, exposed as
-:attr:`~gdt.missions.burstcube.timeline.BurstCubeTimeline.time`) and exposes
-the CSV's own UTC string separately, unconverted, as
-:attr:`~gdt.missions.burstcube.timeline.BurstCubeTimeline.utc_as_written` --
-**do not use that column for analysis.**
+**The CSV's own UTC column is correct.** It agrees with the MET column
+converted through :class:`~gdt.missions.burstcube.time.BurstCubeSecTime` --
+this package's corrected MET epoch, 2021-01-01 00:00:00 TAI -- to better
+than a millisecond. It was the archive's own FITS headers that stated the
+wrong epoch (2021-01-01 00:00:00 UTC, 37 s late); see the README's Caveats
+section for the evidence, including GRB 240629A. This reader parses and
+converts the MET column (exposed as
+:attr:`~gdt.missions.burstcube.timeline.BurstCubeTimeline.time`) and also
+exposes the CSV's own UTC string separately, unconverted, as
+:attr:`~gdt.missions.burstcube.timeline.BurstCubeTimeline.utc_as_written`
+(the name predates this finding -- it was originally believed to disagree by
+37 s -- and is kept as-is to avoid churn).
 
     >>> from gdt.missions.burstcube.timeline import BurstCubeTimeline
     >>> timeline = BurstCubeTimeline.open('20250606_timeline_final.csv')

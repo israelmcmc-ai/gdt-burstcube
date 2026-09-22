@@ -9,6 +9,7 @@ directly against real archive files (``bc240530cs0_3cbd_cl.fits.gz``,
 ``bc_csa_att.fits``), not just the mission documentation, since the two do not
 always agree (see the CBD/TTE ``STDGTI`` note below).
 """
+import warnings
 from contextlib import contextmanager
 
 from gdt.core.headers import FileHeaders, Header
@@ -27,7 +28,16 @@ _timeunit = 's'
 _timeref = 'LOCAL'
 _tassign = 'SATELLITE'
 _mjdrefi = 59215
-_mjdreff = 0.00080074074074074
+#: The corrected MJDREFF this package writes: the bare TT-TAI offset
+#: (32.184 s), placing the epoch at 2021-01-01 00:00:00 **TAI**. Archive
+#: files instead carry 0.00080074074074074 (69.184 s = 32.184 TT-TAI + 37
+#: TAI-UTC), which per the OGIP convention resolves to 2021-01-01 00:00:00
+#: UTC -- 37 s later, and a known defect (see gdt.missions.burstcube.time
+#: and the README Caveats section). A file written with this corrected
+#: value therefore will not byte-match an archive file's MJDREFF; that is
+#: intended. See _bc_time_cards and BurstCubeFileHeaders.__init__ for the
+#: UserWarning raised when this value is actually written.
+_mjdreff = 32.184 / 86400
 
 # common keyword cards
 _telescope_card = ('TELESCOP', _telescope, 'Telescope mission name')
@@ -40,7 +50,9 @@ _date_obs_card = ('DATE-OBS', '', 'Start Date')
 _date_end_card = ('DATE-END', '', 'Stop Date')
 _extname_card = ('EXTNAME', '', 'Name of this binary table extension')
 _mjdrefi_card = ('MJDREFI', _mjdrefi, 'MJD reference day 01 Jan 2021 00:00:00')
-_mjdreff_card = ('MJDREFF', _mjdreff, 'MJD reference (fraction of day)')
+_mjdreff_card = ('MJDREFF', _mjdreff,
+                 'MJD reference (fraction of day); corrected TAI epoch, not '
+                 'the archive defect')
 _timeref_card = ('TIMEREF', _timeref, 'Reference Frame')
 _tassign_card = ('TASSIGN', _tassign, 'Time assigned')
 _timesys_card = ('TIMESYS', _timesys, 'Time system')
@@ -66,15 +78,18 @@ _bc_time_cards = [_mjdrefi_card, _mjdreff_card, _timeref_card, _tassign_card,
                   _timesys_card, _timeunit_card]
 
 
-#: Whether setting TSTART/TSTOP should also refresh DATE-OBS/DATE-END. Off
-#: while headers are being populated from a file on disk -- see
+#: Whether setting TSTART/TSTOP should also refresh DATE-OBS/DATE-END, and
+#: whether constructing a fresh BurstCubeFileHeaders should warn about the
+#: corrected MJDREFF (see BurstCubeFileHeaders.__init__). Both are off while
+#: headers are being populated from a file on disk -- see
 #: :func:`_dates_unsynced`.
 _SYNC_DATES = True
 
 
 @contextmanager
 def _dates_unsynced():
-    """Suspend the ``TSTART``/``TSTOP`` -> ``DATE-OBS``/``DATE-END`` sync.
+    """Suspend the ``TSTART``/``TSTOP`` -> ``DATE-OBS``/``DATE-END`` sync,
+    and the write-time MJDREFF warning (see ``BurstCubeFileHeaders.__init__``).
 
     Reading a file must not silently rewrite its own header values. The
     templates list ``DATE-OBS``/``DATE-END`` before ``TSTART``/``TSTOP``, so
@@ -89,6 +104,14 @@ def _dates_unsynced():
 
     The sync itself is still wanted when *we* set a new time range, e.g. in
     ``_build_headers`` after a slice or rebin.
+
+    ``BurstCubeFileHeaders.from_headers`` (the read path, used by every
+    ``open()`` in this package) builds a fresh, default-valued object first
+    and then overwrites each keyword with the value actually on disk -- so
+    without this suspension, opening any real archive file would trigger the
+    write-time MJDREFF warning transiently, even though the value that
+    actually ends up on the object is the archive's own (and gets its own,
+    separate check -- see :func:`~gdt.missions.burstcube.time.check_met_epoch`).
     """
     global _SYNC_DATES
     previous = _SYNC_DATES
@@ -132,6 +155,24 @@ class BurstCubeFileHeaders(FileHeaders):
     read back from a file matches the file, byte for byte, even where the
     archive's own values are internally inconsistent.
     """
+
+    def __init__(self):
+        super().__init__()
+        if _SYNC_DATES and any('MJDREFF' in hdr for hdr in self._headers.values()):
+            # Only reached when a fresh, default-valued header object is
+            # actually being constructed for writing -- not while reading a
+            # real file, which happens inside _dates_unsynced() (see its
+            # docstring). One warning regardless of how many extensions in
+            # this file carry MJDREFF.
+            warnings.warn(
+                f'This package writes MJDREFF={_mjdreff!r} (32.184/86400, '
+                'the bare TT-TAI offset, epoch 2021-01-01 00:00:00 TAI) -- '
+                'the corrected BurstCube MET epoch. This will not '
+                'byte-match MJDREFF as written in archive FITS files '
+                '(0.00080074074074074, which resolves to 2021-01-01 '
+                '00:00:00 UTC, a known archive defect). See '
+                'gdt.missions.burstcube.time and the README Caveats '
+                'section.', UserWarning, stacklevel=3)
 
     @classmethod
     def from_headers(cls, headers):

@@ -1,29 +1,32 @@
 #!/usr/bin/env python
-"""Minimal reproduction of the README caveat *Timeline UTC column is 37
-seconds off its own MET column*.
+"""Minimal reproduction of the README caveat *The archive's MET epoch is
+stated wrong by 37 seconds*.
 
 The BurstCube MET epoch is defined by ``MJDREFI``/``MJDREFF``/``TIMESYS`` in
 every science file's header. Read per the OGIP convention -- ``MJDREF`` is
 expressed in the scale named by ``TIMESYS`` -- those keywords place the epoch
-at 2021-01-01 00:00:00 UTC, written as 2021-01-01 00:01:09.184 TT.
+at 2021-01-01 00:00:00 UTC, written as 2021-01-01 00:01:09.184 TT. **That is
+the archive's defect**, not the truth: the true MET epoch is 2021-01-01
+00:00:00 TAI, 37.000 s earlier (see the README Caveats section and
+``gdt.missions.burstcube.time`` for the independent GRB 240629A evidence that
+settles which side is correct).
 
-Applying that epoch to a CBD file's own ``TSTART``/``TSTOP`` reproduces its
-``DATE-OBS``/``DATE-END`` strings exactly. Applying the *same* epoch to the
-trend timeline CSV's MET column does not reproduce that file's own UTC
-column: every row is off by exactly 37.000 s, which is TAI - UTC since
-2017-01-01.
-
-Note what this does and does not show. It establishes that two archive
-products disagree by exactly a leap-second offset. It does **not** establish
-which side is correct -- per the archive's own caveat #11 the MET in the
-science files is a reconstructed quantity with documented errors of tens of
-seconds, so neither 0 nor 37.000 s is necessarily the truth.
+Applying the header's stated (defective) epoch to a CBD file's own
+``TSTART``/``TSTOP`` reproduces its ``DATE-OBS``/``DATE-END`` strings exactly
+-- unsurprising, since those strings were generated from the same defective
+epoch. Applying that *same* stated epoch to the trend timeline CSV's MET
+column does *not* reproduce that file's own UTC column: every row is off by
+exactly 37.000 s, which is TAI - UTC since 2017-01-01. The timeline CSV was
+the one telling the truth all along; it is the FITS headers' stated epoch
+that is wrong by that same 37 s.
 
 Unlike the other scripts here this one deliberately does **not** use
 ``gdt-burstcube``, or any GDT package -- it needs only ``astropy`` and the
 standard library, so it can be run by anyone holding the archive files
 without installing this plugin first. Nothing is hardcoded: the epoch comes
-from the downloaded file's own header keywords.
+from the downloaded file's own header keywords, taken at face value -- which
+is exactly what makes it demonstrate the defect rather than the corrected
+epoch this package's own ``BurstCubeSecTime`` actually uses.
 
 Usage::
 
@@ -54,7 +57,9 @@ mjdrefi = header["MJDREFI"]
 mjdreff = header["MJDREFF"]
 timesys = header["TIMESYS"]
 
-# OGIP: MJDREF is expressed in the scale named by TIMESYS.
+# OGIP: MJDREF is expressed in the scale named by TIMESYS. This is the
+# epoch the header states -- the defective one, 37 s later than the true
+# MET epoch (2021-01-01 00:00:00 TAI); see the module docstring.
 epoch = Time(mjdrefi + mjdreff, format="mjd", scale=timesys.lower())
 
 print(f"MJDREFI = {mjdrefi}")
@@ -67,7 +72,9 @@ def met_to_utc(met):
     return (epoch + TimeDelta(met, format="sec")).utc
 
 
-# ------------------------------------------- 1. the FITS file agrees with itself
+# --------------------------------- 1. the FITS file agrees with itself
+# (both DATE-OBS/DATE-END and this epoch were generated from the same
+# defective epoch, so of course they agree)
 print("\n1. CBD file, MET vs its own DATE-OBS/DATE-END")
 for met_key, date_key in (("TSTART", "DATE-OBS"), ("TSTOP", "DATE-END")):
     met = header[met_key]
@@ -78,7 +85,8 @@ for met_key, date_key in (("TSTART", "DATE-OBS"), ("TSTOP", "DATE-END")):
     print(f"      {date_key} in file : {written.isot}")
     print(f"      difference       : {(derived - written).sec:+.3f} s")
 
-# ---------------------------------------------- 2. the timeline CSV does not
+# ---------------------------- 2. the timeline CSV does not (it is correct;
+# the header's stated epoch, used above, is the defective one)
 print("\n2. Trend timeline CSV, MET vs its own UTC column")
 rows = fetch(TIMELINE).decode().splitlines()
 for line in rows[:3]:

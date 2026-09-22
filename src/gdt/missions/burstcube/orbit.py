@@ -27,7 +27,7 @@ from gdt.core.file import FitsFileContextManager
 from .detectors import BurstCubeDetectors
 from .frame import BurstCubeFrame
 from .headers import OrbitHeaders
-from .time import Time
+from .time import Time, check_met_epoch
 
 __all__ = ['BurstCubeOrbit']
 
@@ -66,6 +66,7 @@ class BurstCubeOrbit(SpacecraftFrameModelMixin, FitsFileContextManager):
         obj = super().open(file_path, **kwargs)
         hdrs = [hdu.header for hdu in obj.hdulist]
         obj._headers = OrbitHeaders.from_headers(hdrs)
+        check_met_epoch(obj._headers['ORBIT'])
         return obj
 
     def get_spacecraft_frame(self) -> BurstCubeFrame:

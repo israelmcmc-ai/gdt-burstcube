@@ -51,6 +51,11 @@ TIMEDEL = 0.256
 def _open_cbd(basename):
     with warnings.catch_warnings():
         warnings.simplefilter('error')       # reading must be warning-free
+        # every real archive file states the known-defective MET epoch (see
+        # gdt.missions.burstcube.time); that warning is expected on every
+        # real file and is exercised on its own in test_time.py, so it alone
+        # is let through here.
+        warnings.filterwarnings('ignore', message='.*37 s later.*')
         return BurstCubeCBD.open(real_file(basename))
 
 

@@ -19,7 +19,7 @@ src/gdt/missions/burstcube/    the plugin
     data/                     11 bundled CALDB files (582 kB)
 src/gdt/data/burstcube.urls   20 real archive files, for gdt-data download
 tests/missions/burstcube/
-    offline/                  157 tests, synthetic fixtures + bundled CALDB
+    offline/                  165 tests, synthetic fixtures + bundled CALDB
     data_driven/              38 tests, real archive files, skip if absent
 docs/notebooks/               4 tutorials, committed with real outputs
 examples/                     3 standalone scripts: TTE gaps (uses the
@@ -30,7 +30,7 @@ examples/                     3 standalone scripts: TTE gaps (uses the
 ## Commands
 
 ```sh
-python -m pytest tests -q                              # all 195
+python -m pytest tests -q                              # all 203
 python -m pytest tests/missions/burstcube/offline -q   # no network needed
 gdt-data download burstcube                            # fetch data_driven files
 python -m build --wheel                                # check package data ships
@@ -88,9 +88,18 @@ data does not settle.
 
 ## BurstCube data facts worth not re-deriving
 
-- **MET**: `MJDREFI=59215`, `MJDREFF=0.00080074074074074` (= 69.184 s =
-  32.184 TT−TAI + 37 TAI−UTC), `TIMESYS='TT'`. Epoch is 2021-01-01 00:00:00
-  UTC written in TT; MET counts TT seconds with no leap-second bookkeeping.
+- **MET**: Every archive file's header states `MJDREFI=59215`,
+  `MJDREFF=0.00080074074074074` (= 69.184 s = 32.184 TT−TAI + 37 TAI−UTC),
+  `TIMESYS='TT'`, which per OGIP resolves to an epoch of 2021-01-01 00:00:00
+  **UTC**. **That is wrong.** The true epoch is 2021-01-01 00:00:00 **TAI**,
+  37.000 s earlier — confirmed by GRB 240629A (GBM trigger bn240629704)
+  landing at BurstCube CBD t0+34.14 s under the header's stated epoch vs.
+  t0−2.86 s under the corrected one, and by the trend timeline CSV's own UTC
+  column, which is correct once the epoch is corrected (it looked wrong by
+  37 s before). `BurstCubeSecTime` uses the corrected epoch; `check_met_epoch`
+  in `time.py` warns on read if a file's own header states the old, defective
+  value (silent once HEASARC fixes it). MET itself still counts seconds with
+  no leap-second bookkeeping, just from the corrected instant.
 - **CBD**: `TIMEPIXR=1`, so `TIME` is the **end** of each bin; edges are
   `[TIME − TIMEDEL, TIME]`. Nominal 0.256 s. Float noise is ~1 ULP (1.5e-8 s)
   while genuine short bins are exactly 1.0e-3 s short — `_SNAP_TOL = 1e-6` in
@@ -127,12 +136,13 @@ Full write-ups with evidence are in README §Caveats. In brief:
 | CALDB `eb1024` and caveat #7's keV table differ by a constant ~0.8 gain factor | documented only |
 | `PEAK_THRES` is a pulse-shape cut, not the energy threshold (`BASE_THRES` is) | docstrings, `hk.rst` |
 | `.rsp` internal `EBOUNDS` is an older, detector-independent grid | `to_cbd()` substitutes CALDB `eb16` |
-| Timeline CSV's UTC column is 37 s off its own MET column | `timeline.py` exposes it as `utc_as_written` only |
+| Archive FITS headers state MET epoch as 2021-01-01 00:00:00 UTC; true epoch is TAI, 37 s earlier | `time.py` uses the corrected epoch; `check_met_epoch` warns on read |
+| `TIME_SYST_ERROR` is underestimated in at least some periods (0.500 s quoted vs. 2.86 s residual around GRB 240629A) | documented only |
 | Attitude exists for 3 epochs mission-wide, ~10-12° errors | no interpolation; `BurstCubeFrame.from_quaternion` |
 
-Three of these are defects in the archive/CALDB files themselves, not in this
-package: the SAA column swap, the SAA vertex order, and the `eb1024` scale.
-If they are ever fixed upstream, the corresponding tests fail loudly, which
+Four of these are defects in the archive/CALDB files themselves, not in this
+package: the SAA column swap, the SAA vertex order, the `eb1024` scale, and
+the MET epoch. If they are ever fixed upstream, the corresponding tests fail loudly, which
 is intentional.
 
 ## gdt-core issues encountered

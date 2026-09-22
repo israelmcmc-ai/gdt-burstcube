@@ -146,6 +146,10 @@ def test_cbd_gti_schema_uf_variant_has_extra_columns(tmp_path):
     make_cbd_fits(path, gti_schema='uf')
     with warnings.catch_warnings():
         warnings.simplefilter('error')
+        # the fixture carries the archive's own (defective) MJDREFF, by
+        # design (see conftest.py); that is unrelated to what this test
+        # checks, so it alone is allowed through.
+        warnings.filterwarnings('ignore', message='.*37 s later.*')
         cbd = BurstCubeCBD.open(path)
     assert isinstance(cbd.headers, CBDUnfilteredHeaders)
     assert cbd.gti.num_intervals == 1
@@ -158,6 +162,8 @@ def test_cbd_gti_schema_cl_variant_uses_standard_headers(tmp_path):
     make_cbd_fits(path, gti_schema='cl')
     with warnings.catch_warnings():
         warnings.simplefilter('error')
+        # see the sibling 'uf' test above for why this one warning is let through.
+        warnings.filterwarnings('ignore', message='.*37 s later.*')
         cbd = BurstCubeCBD.open(path)
     assert isinstance(cbd.headers, CBDHeaders)
     assert not isinstance(cbd.headers, CBDUnfilteredHeaders)

@@ -1,26 +1,40 @@
 """Offline tests for gdt.missions.burstcube.time. No network access needed."""
+import warnings
+
 import numpy as np
 import pytest
+from astropy.io import fits
 
-from gdt.missions.burstcube.time import Time
+from gdt.missions.burstcube.time import (Time, check_met_epoch,
+                                         UnrecognizedMETEpochWarning)
 
 
 class TestBurstCubeSecTime:
     """Tests for the BurstCube MET time format."""
 
     def test_met_to_utc_reference_value(self):
-        """MET 107629263.33 must convert to 2024-05-30T17:01:03.330 UTC. This
-        is the DATE-OBS of the CBD extension of bc240530cs0_3cbd_cl.fits.gz,
-        so it validates the whole epoch/scale definition against a real
-        archive file, not just the arithmetic.
+        """MET 107629263.33 must convert to 2024-05-30T17:00:26.330 UTC:
+        37.000 s *before* 2024-05-30T17:01:03.330, the DATE-OBS the CBD
+        extension of bc240530cs0_3cbd_cl.fits.gz carries on disk. That 37 s
+        gap is expected, not a bug: DATE-OBS was itself generated under the
+        archive's defective epoch (2021-01-01 00:00:00 UTC, per the file's
+        own MJDREFI/MJDREFF/TIMESYS read at face value), 37 s later than the
+        corrected epoch (2021-01-01 00:00:00 TAI) this package uses. See the
+        gdt.missions.burstcube.time module docstring and the README Caveats
+        section for the evidence.
         """
         t = Time(107629263.33, format='burstcube')
-        assert t.utc.isot == '2024-05-30T17:01:03.330'
+        assert t.utc.isot == '2024-05-30T17:00:26.330'
 
-    def test_epoch_is_2021_01_01_utc_in_tt(self):
-        """MET 0 must be 2021-01-01T00:00:00.000 UTC, per MJDREFI=59215."""
+    def test_epoch_is_2021_01_01_tai(self):
+        """MET 0 must be 2021-01-01T00:00:00.000 TAI (= 2020-12-31T23:59:23.000
+        UTC), the corrected BurstCube MET epoch -- not the 2021-01-01
+        00:00:00 UTC the archive's own FITS headers state at face value
+        (see the module docstring).
+        """
         t = Time(0.0, format='burstcube')
-        assert t.utc.isot == '2021-01-01T00:00:00.000'
+        assert t.tai.isot == '2021-01-01T00:00:00.000'
+        assert t.utc.isot == '2020-12-31T23:59:23.000'
 
     def test_round_trip(self):
         """Converting a MET to UTC and back must reproduce the original MET,
@@ -35,7 +49,7 @@ class TestBurstCubeSecTime:
         """The format must work on an array of MET values, not just scalars."""
         mets = np.array([0.0, 107629263.33, 2 * 107629263.33])
         t = Time(mets, format='burstcube')
-        assert t.utc.isot[1] == '2024-05-30T17:01:03.330'
+        assert t.utc.isot[1] == '2024-05-30T17:00:26.330'
 
 
 class TestBurstCubeObsId:
@@ -74,3 +88,60 @@ class TestBurstCubeObsId:
         from_string = Time('240530', format='burstcube_obsid')
         from_time = Time(from_string)
         assert from_time.burstcube_obsid == '240530'
+
+
+def test_archive_mjdreff_is_37s_later_than_the_corrected_epoch():
+    """Regression test for the epoch correction itself.
+
+    Every archive FITS file carries MJDREFI=59215, MJDREFF=0.00080074074074074,
+    TIMESYS='TT'. Read at face value (OGIP: MJDREF is expressed in the scale
+    TIMESYS names), that resolves to exactly 37.000 s later than this
+    package's corrected epoch, 2021-01-01 00:00:00 TAI. If HEASARC ever
+    fixes the archive headers to state the corrected epoch directly, this
+    test fails loudly -- the same treatment this repo already gives the SAA
+    polygon and eb1024 defects.
+    """
+    archive_epoch = Time(59215, 0.00080074074074074, format='mjd', scale='tt')
+    corrected_epoch = Time('2021-01-01 00:00:00', scale='tai')
+    assert (archive_epoch - corrected_epoch).sec == pytest.approx(37.0, abs=1e-6)
+
+
+class TestCheckMetEpoch:
+    """Tests for check_met_epoch(), the data-driven epoch check on read."""
+
+    @staticmethod
+    def _header(mjdreff, timesys='TT', mjdrefi=59215):
+        return fits.Header({'MJDREFI': mjdrefi, 'MJDREFF': mjdreff,
+                            'TIMESYS': timesys})
+
+    def test_silent_on_the_corrected_epoch(self):
+        """A header already stating the corrected epoch (e.g. a future
+        HEASARC fix) must not warn."""
+        header = self._header(32.184 / 86400)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            check_met_epoch(header)  # must not raise/warn
+
+    def test_warns_on_the_known_archive_defect(self):
+        """A header stating the known defective epoch (2021-01-01 00:00:00
+        UTC) must raise exactly one UserWarning, mentioning the 37 s gap."""
+        header = self._header(0.00080074074074074)
+        with pytest.warns(UserWarning, match='37 s') as record:
+            check_met_epoch(header)
+        assert len(record) == 1
+        assert not any(isinstance(w.message, UnrecognizedMETEpochWarning)
+                       for w in record)
+
+    def test_warns_louder_on_an_unrecognized_epoch(self):
+        """A header resolving to neither known epoch gets the distinct,
+        louder warning class."""
+        header = self._header(0.5)
+        with pytest.warns(UnrecognizedMETEpochWarning):
+            check_met_epoch(header)
+
+    def test_missing_keywords_do_not_raise(self):
+        """A header without MJDREFI/MJDREFF/TIMESYS at all (e.g. PRIMARY on
+        some products) is simply skipped, not an error."""
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            check_met_epoch(fits.Header())  # must not raise

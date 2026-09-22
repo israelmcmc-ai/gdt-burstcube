@@ -31,6 +31,7 @@ from gdt.core.data_primitives import Gti, EventList
 
 from . import caldb
 from .headers import TTEHeaders
+from .time import check_met_epoch
 
 __all__ = ['BurstCubeTTE', 'DEFAULT_GAP_THRESHOLD']
 
@@ -183,6 +184,7 @@ class BurstCubeTTE(PhotonList):
 
         hdrs = [hdu.header for hdu in obj.hdulist]
         headers = TTEHeaders.from_headers(hdrs)
+        check_met_epoch(headers['EVENTS'])
 
         events_idx = obj.hdu_index_from_name('EVENTS')
         gti_idx = obj.hdu_index_from_name('STDGTI')

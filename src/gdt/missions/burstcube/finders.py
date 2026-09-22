@@ -227,12 +227,25 @@ class BurstCubeObsFinder(_BurstCubeFinderMixin):
 
         BurstCube organizes the archive by UTC calendar day, and the
         ``burstcube_obsid`` time format registered by
-        :mod:`gdt.missions.burstcube.time` is the conversion, so this is
-        also available directly as ``Time(...).burstcube_obsid``. Every
-        method here that takes an observation day -- the constructor,
-        :meth:`cd` -- accepts a :class:`~astropy.time.Time` too and runs it
-        through this, so an explicit conversion is only needed when you want
-        the string itself (to name a directory, say).
+        :mod:`gdt.missions.burstcube.time` is the conversion. Every method
+        here that takes an observation day -- the constructor, :meth:`cd` --
+        accepts a :class:`~astropy.time.Time` too and runs it through this,
+        so an explicit conversion is only needed when you want the string
+        itself (to name a directory, say).
+
+        Note:
+            This explicitly converts to UTC before reading
+            ``burstcube_obsid``, rather than using ``when.burstcube_obsid``
+            directly. A ``Time``'s *format* (which calendar string it
+            prints) and its *scale* (which instant that string names) are
+            independent in astropy: ``burstcube_obsid`` reads whatever scale
+            the ``Time`` is already in, and a ``Time(met, format='burstcube')``
+            is natively in TAI (the corrected MET epoch's scale, see
+            :mod:`gdt.missions.burstcube.time`), not UTC. Near a UTC day
+            boundary, TAI and UTC can disagree on which calendar day an
+            instant falls in by as much as their fixed 37 s offset, which
+            would route a file to the wrong day directory. Converting to UTC
+            first removes that dependence on the input's native scale.
 
         Args:
             when (str or astropy.time.Time): A time, in any format
@@ -249,7 +262,7 @@ class BurstCubeObsFinder(_BurstCubeFinderMixin):
             '240814'
         """
         if isinstance(when, AstropyTime):
-            return when.burstcube_obsid
+            return when.utc.burstcube_obsid
         return str(when)
 
 

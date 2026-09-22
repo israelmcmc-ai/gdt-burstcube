@@ -21,6 +21,7 @@ from gdt.core.data_primitives import Gti
 from gdt.core.file import FitsFileContextManager
 
 from .headers import GTIHeaders
+from .time import check_met_epoch
 
 __all__ = ['BurstCubeGTI']
 
@@ -51,6 +52,7 @@ class BurstCubeGTI(FitsFileContextManager):
         obj = super().open(file_path, **kwargs)
         hdrs = [hdu.header for hdu in obj.hdulist]
         obj._headers = GTIHeaders.from_headers(hdrs)
+        check_met_epoch(obj._headers['STDGTI'])
         return obj
 
     @classmethod

@@ -42,7 +42,10 @@ def test_well_formed_tstart_tstop_does_not_warn(tmp_path):
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter('always')
         BurstCubeTTE.open(path)
-    user_warnings = [w for w in record if issubclass(w.category, UserWarning)]
+    # the fixture carries the archive's own (defective) MJDREFF, by design
+    # (see conftest.py); that warning is unrelated to what this test checks.
+    user_warnings = [w for w in record if issubclass(w.category, UserWarning)
+                     and '37 s later' not in str(w.message)]
     assert not user_warnings
 
 

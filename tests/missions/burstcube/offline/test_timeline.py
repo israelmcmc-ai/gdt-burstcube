@@ -31,10 +31,13 @@ def test_parses_three_columns_with_no_header(tmp_path):
     np.testing.assert_allclose(tl._met, [row[0] for row in _SAMPLE_ROWS])
 
 
-def test_time_property_uses_met_and_disagrees_with_csv_utc_by_37s(tmp_path):
-    """The FITS-verified 37 s discrepancy (spec section 18): the CSV's own
-    UTC string is exactly 37.000 s earlier than the MET column converted
-    with BurstCubeSecTime.
+def test_time_property_agrees_with_csv_utc_column(tmp_path):
+    """Under the corrected MET epoch (2021-01-01 00:00:00 TAI), the CSV's
+    own UTC string agrees with the MET column converted with
+    BurstCubeSecTime, to better than a millisecond -- it was the archive's
+    FITS headers that were wrong by 37 s (2021-01-01 00:00:00 UTC), not this
+    CSV. See the gdt.missions.burstcube.time module docstring and the
+    README Caveats section for the evidence.
     """
     path = tmp_path / 'timeline.csv'
     _write_csv(path)
@@ -43,7 +46,9 @@ def test_time_property_uses_met_and_disagrees_with_csv_utc_by_37s(tmp_path):
     from astropy.time import Time as AstropyTime
     written_utc = AstropyTime(list(tl.utc_as_written), format='isot', scale='utc')
     discrepancy = (tl.time.utc - written_utc).sec
-    np.testing.assert_allclose(discrepancy[0], 37.0, atol=1e-3)
+    # only row 0 is the verified real row (see _SAMPLE_ROWS); the others are
+    # synthetic and not necessarily self-consistent as MET/UTC pairs.
+    np.testing.assert_allclose(discrepancy[0], 0.0, atol=1e-3)
 
 
 def test_utc_as_written_is_kept_separate_and_unconverted(tmp_path):

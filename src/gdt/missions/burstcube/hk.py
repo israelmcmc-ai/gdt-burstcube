@@ -19,7 +19,7 @@ from astropy.timeseries import TimeSeries
 from gdt.core.file import FitsFileContextManager
 
 from .headers import DetectorHKHeaders
-from .time import Time
+from .time import Time, check_met_epoch
 
 __all__ = ['BurstCubeHK']
 
@@ -60,6 +60,7 @@ class BurstCubeHK(FitsFileContextManager):
         obj = super().open(file_path, **kwargs)
         hdrs = [hdu.header for hdu in obj.hdulist]
         obj._headers = DetectorHKHeaders.from_headers(hdrs)
+        check_met_epoch(obj._headers['DETECTOR_HK1'])
         return obj
 
     def trig_enabled(self, detector=None):

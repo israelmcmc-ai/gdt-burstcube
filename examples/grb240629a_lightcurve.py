@@ -7,18 +7,37 @@ That instant, converted onto the BurstCube clock using the CBD file's own
 MJDREFI/MJDREFF/TIMESYS keywords, is t0 -- the zero of the x axis. The x axis
 is BurstCube MET, just shifted so that t0 sits at 0.
 
+That header-derived epoch is the **defective** one: read at face value (per
+OGIP, MJDREF is expressed in the scale TIMESYS names), it resolves to
+2021-01-01 00:00:00 UTC, which is 37.000 s later than the true MET epoch,
+2021-01-01 00:00:00 TAI. That is exactly why the burst appears at
+t0+``OBSERVED_OFFSET`` (34.14 s) rather than at t0 itself:
+``OBSERVED_OFFSET`` is the offset measured under the archive's *stated*
+epoch. Correcting to the true TAI epoch would place the burst at t0-2.86 s
+instead -- agreement with the GBM trigger within the true timing
+uncertainty, and itself evidence that the archive's quoted
+``TIME_SYST_ERROR`` (the lower panel here) is underestimated in at least
+some periods. See the README Caveats section and
+``gdt.missions.burstcube.time`` for the full evidence; this script
+deliberately keeps the archive's own (defective) epoch so that the
+discrepancy it exists to show remains visible on the plot.
+
 The lower panel is the TIME_SYST_ERROR column: the uncertainty the archive
 itself quotes on each bin's TIME, which is a ground-reconstructed quantity
 (see the archive caveats document, caveat #11 "Time Corrections", and the
 ORIGINAL_TIME column alongside it).
 
 The tallest native-resolution spike in the plotted window is at t0+91 s and
-is a single 0.256 s bin in CS0 alone, not a burst -- it is left in rather
-than clipped, since nothing here is filtered.
+is a single 0.256 s bin in CS0 alone (a single-detector phosphorescence
+event), not a burst -- it is left in rather than clipped, since nothing here
+is filtered. (That t0+91 s is in this script's own, uncorrected frame;
+against a corrected t0 the same spike sits at +53.98 s, i.e. 37 s earlier in
+relative terms. It is not renumbered here, because this script deliberately
+keeps the uncorrected frame.)
 
 Uses no GDT package -- only astropy, numpy, matplotlib and the standard
 library. URLs are hardcoded; the epoch is not, it comes from the downloaded
-header.
+header -- deliberately the archive's own (defective) one; see above.
 
 Usage::
 
@@ -48,9 +67,11 @@ T0_UTC = "2024-06-29T16:53:52.729"
 HALF_WIDTH = 300.0      # seconds each side of t0 to plot
 REBIN = 8               # 0.256 s native -> 2.048 s, for legibility
 
-# Where the burst actually appears in this data. NOT derived by this script:
+# Where the burst actually appears in this data, under the archive's own
+# *stated* (defective) epoch used above -- NOT derived by this script:
 # measured by fitting GBM's own burst profile to these counts. Drawn only so
-# the offset can be read off the figure.
+# the offset can be read off the figure. Under the corrected TAI epoch this
+# would instead be t0-2.86 s (see the module docstring).
 OBSERVED_OFFSET = 34.14
 
 
@@ -84,7 +105,9 @@ timedel = header["TIMEDEL"]
 for other in times[1:]:
     assert np.array_equal(times[0], other), "detectors do not share bin edges"
 
-# OGIP: MJDREF is expressed in the scale named by TIMESYS.
+# OGIP: MJDREF is expressed in the scale named by TIMESYS. This is the
+# epoch as the header states it -- the defective one, 37 s later than the
+# true MET epoch (2021-01-01 00:00:00 TAI); see the module docstring.
 epoch = Time(header["MJDREFI"] + header["MJDREFF"], format="mjd",
              scale=header["TIMESYS"].lower())
 t0_met = (Time(T0_UTC, scale="utc") - epoch).sec

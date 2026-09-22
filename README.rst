@@ -342,57 +342,77 @@ it, so a future CALDB revision that is already correct passes through
 untouched. If you read the file yourself rather than through this plugin,
 you need all three corrections.
 
-Timeline UTC column is 37 seconds off its own MET column
+The archive's MET epoch is stated wrong by 37 seconds
 -------------------------------------------------------------
 
-``trend/timeline/*_timeline_final.csv`` has three columns and no header row:
-a MET, a human-readable UTC string, and an event description.
+Every BurstCube science file carries ``MJDREFI=59215``, ``MJDREFF=
+0.00080074074074074``, ``TIMESYS='TT'``. Read at face value, per the OGIP
+convention that ``MJDREF`` is expressed in the scale ``TIMESYS`` names, that
+fraction is 69.184 s = 32.184 (TT-TAI) + 37 (TAI-UTC in 2021), placing the
+epoch at 2021-01-01 00:00:00 **UTC**.
+
+**That epoch is wrong.** The true MET epoch is 2021-01-01 00:00:00 **TAI**
+-- 37.000 s earlier in absolute terms. This package's
+:class:`~gdt.missions.burstcube.time.BurstCubeSecTime` uses the corrected
+epoch, so every time it returns is 37 s earlier than converting the same MET
+with the archive's stated epoch would give.
+
+*The evidence.* ``trend/timeline/*_timeline_final.csv`` has three columns
+and no header row: a MET, a human-readable UTC string, and an event
+description.
 
 .. code-block::
 
    106367555.28030825,2024-05-16T02:31:58.280,Spacecraft Reboot
 
-**The UTC string is 37 seconds earlier than the MET on the same row.** The
-MET is correct; the UTC string is not.
+Converting that row's MET with the archive's stated epoch gives a UTC string
+37.000 s *later* than the one the CSV itself carries, on all 505 rows,
+string-identical after rounding to milliseconds. It was tempting to read
+that as the CSV being wrong -- until an independent check settled which side
+actually is: Fermi GBM triggered on GRB 240629A (bn240629704) at
+2024-06-29T16:53:52.729 UTC. Converted onto the BurstCube clock with the
+archive's stated epoch, that burst appears in BurstCube CBD at **t0+34.14 s**
+-- 34 seconds after the trigger the light curve should center on. Correcting
+the epoch to 2021-01-01 00:00:00 TAI moves it to **t0-2.86 s**, which brings
+BurstCube into agreement with the GBM trigger within the true timing
+uncertainty (see the next caveat for why that residual is not itself cause
+for alarm). The direction and size of both discrepancies -- the timeline CSV
+and the GRB arrival time -- are explained by the same 37 s: the archive's
+FITS headers state a UTC epoch where the truth is TAI.
 
-*Why there should be no offset at all.* BurstCube MET is defined by
-``MJDREFI=59215``, ``MJDREFF=0.00080074074074074``, ``TIMESYS='TT'``. That
-fraction is 69.184 s = 32.184 (TT-TAI) + 37 (TAI-UTC in 2021), so the epoch
-is 2021-01-01 00:00:00 UTC written in TT, and MET counts TT seconds from it.
-TT-UTC held constant at 69.184 s from 2017 through the whole mission -- no
-leap second occurred -- so the conversion collapses to a plain addition with
-no correction term:
+The timeline CSV's own UTC column is, it turns out, correct; it is the FITS
+headers that were wrong. It is the same 37-second confusion that caveat #11
+of the official document describes for ground-commanded time jams.
 
-.. code-block::
+``BurstCubeTimeline`` parses the MET column and converts it with
+``BurstCubeSecTime`` (the corrected epoch), which now agrees with the CSV's
+own UTC string to better than a millisecond on every row checked. The CSV's
+own string is still exposed separately, unconverted, as ``utc_as_written``
+(the name predates this finding and is kept to avoid churn) for reference
+against the raw file.
 
-   UTC = 2021-01-01T00:00:00 + MET
+If HEASARC ever corrects the archive headers to state the TAI epoch
+directly, the regression test pinning the 37 s gap between the two epochs
+fails loudly -- the same treatment this repo already gives the SAA polygon
+and ``eb1024`` defects.
 
-*What the file actually contains.* All 505 rows reproduce exactly --
-string-identical after rounding to milliseconds -- under:
+``TIME_SYST_ERROR`` is underestimated in at least some periods
+-------------------------------------------------------------
 
-.. code-block::
+Every CBD and TTE bin carries a ``TIME_SYST_ERROR`` column: the archive's
+own quoted systematic uncertainty on that bin's ``TIME``. In the window
+around GRB 240629A, that column is a flat **0.500 s**.
 
-   UTC_csv = 2021-01-01T00:00:00 + MET - 37 s
-
-That is the signature of treating the epoch as 2021-01-01 00:00:00 **TAI**
-and the MET count as TAI seconds, then converting TAI to UTC by subtracting
-the 37 leap seconds. The conversion step is right; the premise about what
-MET counts is wrong. It is the same 37-second confusion that caveat #11 of
-the official document describes for ground-commanded time jams.
-
-The residual scatter after that model is at most half a millisecond, which
-is entirely the CSV's own rounding to three decimals -- the underlying
-offset is a clean constant, not a drift.
-
-*Which one is authoritative.* The MET is. The epoch above reproduces
-``DATE-OBS`` and ``DATE-END`` to the millisecond in the CBD (both ``_uf``
-and ``_cl``) and orbit files, and the ``burcbmastr`` catalog's own UTC
-strings agree with it too. The FITS products are self-consistent; *this CSV
-is the outlier*.
-
-``BurstCubeTimeline`` therefore parses the MET column and converts it with
-``BurstCubeSecTime``. The CSV's own string is exposed unconverted as
-``utc_as_written`` for provenance only -- **do not use it for analysis.**
+The residual left after correcting the MET epoch (previous caveat) is
+**2.86 s** -- 5.7x the quoted 0.500 s uncertainty for that window. That
+residual sits within the archive's own documented ground-time-jam behavior
+(the official caveats document quotes a post-GPS-sync residual of
+1.5 +/- 1.0 s and a ground-commanded time jam of 38.4 +/- 2.4 s, of which
+37.000 s is the leap second corrected above), so it is not itself unexplained
+-- but it is bigger than 0.500 s would suggest. ``TIME_SYST_ERROR`` is
+therefore an underestimate of the true timing uncertainty in at least some
+periods, this one included. Treat it as a lower bound, not the full error
+budget, when the precision matters.
 
 ----
 

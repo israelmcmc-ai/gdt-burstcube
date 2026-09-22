@@ -23,6 +23,7 @@ from gdt.core.data_primitives import Gti, TimeEnergyBins
 
 from . import caldb
 from .headers import CBDHeaders, CBDUnfilteredHeaders
+from .time import check_met_epoch
 
 __all__ = ['BurstCubeCBD']
 
@@ -215,6 +216,7 @@ class BurstCubeCBD(Phaii):
         headers_cls = (CBDHeaders if 'HDUCLAS2' in gti_hdr
                        else CBDUnfilteredHeaders)
         headers = headers_cls.from_headers(hdrs)
+        check_met_epoch(headers['CBD'])
 
         cbd_idx = obj.hdu_index_from_name('CBD')
         gti_idx = obj.hdu_index_from_name('STDGTI')

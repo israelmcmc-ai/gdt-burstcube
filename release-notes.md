@@ -83,3 +83,28 @@ Initial package foundation.
   curve overlay, attitude/response, background fitting, and a spectral fit
   -- a clean non-detection with a 90% upper limit, about 27x below GBM's
   own fluence-averaged energy flux.
+- **Corrected the BurstCube MET epoch.** Every archive FITS file's
+  `MJDREFI`/`MJDREFF`/`TIMESYS` state an epoch of 2021-01-01 00:00:00 UTC;
+  the true epoch is 2021-01-01 00:00:00 **TAI**, 37.000 s earlier, confirmed
+  by GRB 240629A (Fermi GBM trigger bn240629704) landing at BurstCube
+  t0+34.14 s under the archive's stated epoch vs. t0-2.86 s under the
+  corrected one -- agreement with the GBM trigger within the true timing
+  uncertainty, and itself evidence that the archive's `TIME_SYST_ERROR` is
+  underestimated in at least some periods. `BurstCubeSecTime` now uses the
+  corrected epoch, so **every time value this package returns is 37 s
+  earlier** than before this change. `headers.py` writes the corrected `MJDREFF`
+  (32.184/86400) and warns when doing so; a new `check_met_epoch()` (in
+  `time.py`) warns on read if a file's own header states the old, defective
+  value, and is called from every reader that opens a real archive file
+  (`cbd.py`, `tte.py`, `orbit.py`, `attitude.py`, `hk.py`, `gti.py`). The
+  timeline CSV's `utc_as_written` column, previously documented as wrong by
+  37 s, is now known to be correct; the module and property docstrings are
+  corrected accordingly (the property keeps its name to avoid churn). The
+  package is still 0.1.0 unreleased, so no back-compat shim is provided for
+  the previous (incorrect) epoch.
+- Fixed `BurstCubeObsFinder.obs_id_from()` to convert to UTC before reading
+  `burstcube_obsid`: a `Time(met, format='burstcube')` is natively in TAI
+  (the MET epoch's scale), and reading `burstcube_obsid` straight off a
+  non-UTC-scale `Time` can give the wrong calendar day within the TAI-UTC
+  offset of a UTC midnight -- discovered while adding an edge-case test for
+  the epoch correction above.
