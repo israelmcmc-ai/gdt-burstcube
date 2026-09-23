@@ -1,0 +1,108 @@
+.. _notebooks:
+
+
+Jupyter Notebook Tutorials
+==========================
+
+These notebooks were executed top-to-bottom against the live HEASARC archive
+(observation day 240530, detector CS0 as the running example unless noted),
+and are committed here with their real outputs -- nothing in them is
+hand-written. Where something did not work as a naive port from another
+mission might expect, the notebook shows the actual error and the real
+workaround, rather than hiding it.
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/1_data_types_and_binning
+   notebooks/2_response
+   notebooks/3_ancillary
+   notebooks/4_grb_240629a
+   notebooks/5_sfl_240714_bc_240711
+
+----
+
+**1. Data Types and Binning** -- CBD (continuous binned data) and TTE
+(time-tagged events), the difference between ``_uf`` (unfiltered) and ``_cl``
+(cleaned) variants, finding and downloading a full observation day, time
+selection, rebinning, light curves, and count spectra -- including the
+caveats that bite in practice: bin-end (``TIMEPIXR=1``) timestamps, the
+``TIME_SYST_ERROR`` column, the mid-mission energy threshold change, and a
+real rebinning failure caused by genuine 1 ms-short bins in the archive data.
+It also compares TTE against CBD on day 240814 -- binned on CBD's own bin
+edges, in time and in energy, plus the same events at TTE's native 1024
+channels -- which is where the TTE recording gaps show up.
+
+**2. Detector Response** -- the HEALPix response grid (nside=16, spacecraft
+coordinates), downloading only the pixels needed for one direction,
+interpolating a DRM, plotting the DRM and effective area, folding a spectrum,
+regrouping to CBD's 16 channels, and comparing the four detectors at one
+location.
+
+**3. Ancillary Data** -- orbit/ephemeris and Earth position, the 3
+reconstructed attitude epochs in the whole archive, supplying your own
+attitude quaternion, GTI and SAA filtering, detector housekeeping (enable
+flags and energy thresholds), the mission timeline (whose own UTC column
+turned out to be right, and the FITS headers' stated MET epoch 37 s wrong),
+and the ``burcbmastr`` observation catalog.
+
+**4. GRB 240629A: A Joint BurstCube/GBM Worked Example** -- a complete
+worked analysis of one real burst, chaining the previous 3 notebooks'
+pieces together the way a real analysis would: getting the trigger time,
+T90, and sky position from GBM's own Trigger and Burst Catalogs (via
+``astro-gdt-fermi``); downloading and plotting the corresponding BurstCube
+light curve, individually and summed across detectors, against GBM's own
+(binning GBM's unbinned TTE onto BurstCube's bin edges, since GBM's CTIME
+uses adaptive rather than fixed time binning); confirming which of
+BurstCube's 3 reconstructed attitude epochs actually covers the trigger and
+using it to get the response; a background fit excluding GBM's T90 plus a
+10 s buffer; and a joint 4-detector power-law spectral fit. **BurstCube
+detected this burst**, at 13 sigma combined. It also does double duty as the
+evidence behind the README's *The archive's MET epoch is stated wrong by 37
+seconds* caveat: a burst timed independently by another spacecraft is the
+one thing that can check BurstCube's clock from outside, and this one lands
+at the trigger only under the corrected epoch. Along the way it has to find
+and exclude a single-detector phosphorescence event sitting in the
+background window.
+
+**5. Two July 2024 Events: SFL 240714 and Candidate BC 240711** -- light
+curves for the two events that attitude epochs 1 and 2 were reconstructed
+for, each with BurstCube MET on the bottom axis and UTC on the top, in a
+~62-316 keV and a ~316-1600 keV band. For the solar flare, GBM's own
+trigger and CTIME data show where a flare's emission actually is: almost all
+below 50 keV and thermal, which BurstCube's ~62 keV threshold cannot reach,
+plus a short non-thermal burst at 50-300 keV that BurstCube does see, at the
+same time as GBM -- a second, independent confirmation of the corrected MET
+epoch. The candidate has no GBM counterpart, its quoted time is ambiguous
+by exactly the 37 s epoch error (both instants are marked), and its light
+curve does not single out either one. Along the way: GBM's detectors
+saturating during the flare, and 240711's low energy thresholds filling CBD
+channels 0-1.
+
+----
+
+Standalone Example Scripts
+--------------------------
+
+``examples/`` holds short, self-contained scripts that each download what
+they need and reproduce one specific result:
+
+* ``examples/tte_gaps_vs_cbd.py`` -- plots TTE's recording gaps against the
+  CBD rate over the same interval, the minimal reproduction of the README
+  caveat *TTE gaps*.
+
+* ``examples/timeline_utc_vs_met.py`` -- applies the MET epoch, taken from a
+  CBD file's own ``MJDREFI``/``MJDREFF``/``TIMESYS`` keywords, to that file's
+  ``TSTART``/``TSTOP`` and to the trend timeline's MET column: the first
+  reproduces the file's own ``DATE-OBS``/``DATE-END`` exactly, the second
+  misses the timeline's own UTC column by exactly 37.000 s on all 505 rows.
+  The minimal reproduction of the README caveat *The archive's MET epoch is
+  stated wrong by 37 seconds*. Uses no GDT package at all -- only
+  ``astropy`` and the standard library -- so it can be run without
+  installing this plugin.
+
+* ``examples/grb240629a_lightcurve.py`` -- plots the summed CS0-CS3 CBD light
+  curve around GRB 240629A against the Fermi GBM trigger time as ``t0``, with
+  the archive's own ``TIME_SYST_ERROR`` column on a shared time axis. The
+  burst appears about 34 s after ``t0`` while the quoted uncertainty over the
+  same window is a flat 0.500 s. Also uses no GDT package.

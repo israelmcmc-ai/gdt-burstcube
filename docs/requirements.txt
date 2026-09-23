@@ -1,0 +1,16 @@
+astro-gdt>=2.2.3
+astro-gdt-burstcube
+# only for notebooks 4 and 5, which pull GBM's own trigger/burst catalogs
+# and trigger data for comparison; not a runtime dependency of the plugin
+# itself, and not needed to build the docs (nbsphinx_execute='never')
+astro-gdt-fermi
+numpy
+scipy
+matplotlib
+astropy
+healpy
+Sphinx==5.0.2
+astropy-sphinx-theme
+nbsphinx
+sphinx-automodapi
+ipython
