@@ -118,3 +118,11 @@ Initial package foundation.
   `from ...response import nside, num_pixels` since those wrappers were
   removed; it now reads the grid geometry from `caldb.response_grid()` at
   the point of use. Re-running it was what surfaced this.
+- Added notebook 5, light curves for SFL 240714 and candidate BC 240711 --
+  the two events attitude epochs 1 and 2 were reconstructed for -- with
+  BurstCube MET and UTC on shared-time axes. The flare's non-thermal
+  50-300 keV burst lines up with GBM's (trigger `bn240714104`) near zero lag
+  and not at +/-37 s, independently confirming the corrected MET epoch. The
+  candidate's quoted time is ambiguous by exactly that 37 s; its light curve
+  does not settle it. GBM data comes from CTIME rather than TTE here: the
+  flare's two TTE files are ~950 MB.

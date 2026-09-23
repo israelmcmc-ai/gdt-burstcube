@@ -18,6 +18,7 @@ workaround, rather than hiding it.
    notebooks/2_response
    notebooks/3_ancillary
    notebooks/4_grb_240629a
+   notebooks/5_sfl_240714_bc_240711
 
 ----
 
@@ -41,8 +42,9 @@ location.
 **3. Ancillary Data** -- orbit/ephemeris and Earth position, the 3
 reconstructed attitude epochs in the whole archive, supplying your own
 attitude quaternion, GTI and SAA filtering, detector housekeeping (enable
-flags and energy thresholds), the mission timeline (and its known 37 s UTC
-offset), and the ``burcbmastr`` observation catalog.
+flags and energy thresholds), the mission timeline (whose own UTC column
+turned out to be right, and the FITS headers' stated MET epoch 37 s wrong),
+and the ``burcbmastr`` observation catalog.
 
 **4. GRB 240629A: A Joint BurstCube/GBM Worked Example** -- a complete
 worked analysis of one real burst, chaining the previous 3 notebooks'
@@ -63,6 +65,20 @@ at the trigger only under the corrected epoch. Along the way it has to find
 and exclude a single-detector phosphorescence event sitting in the
 background window.
 
+**5. Two July 2024 Events: SFL 240714 and Candidate BC 240711** -- light
+curves for the two events that attitude epochs 1 and 2 were reconstructed
+for, each with BurstCube MET on the bottom axis and UTC on the top, in a
+~62-316 keV and a ~316-1600 keV band. For the solar flare, GBM's own
+trigger and CTIME data show where a flare's emission actually is: almost all
+below 50 keV and thermal, which BurstCube's ~62 keV threshold cannot reach,
+plus a short non-thermal burst at 50-300 keV that BurstCube does see, at the
+same time as GBM -- a second, independent confirmation of the corrected MET
+epoch. The candidate has no GBM counterpart, its quoted time is ambiguous
+by exactly the 37 s epoch error (both instants are marked), and its light
+curve does not single out either one. Along the way: GBM's detectors
+saturating during the flare, and 240711's low energy thresholds filling CBD
+channels 0-1.
+
 ----
 
 Standalone Example Scripts
@@ -80,8 +96,8 @@ they need and reproduce one specific result:
   ``TSTART``/``TSTOP`` and to the trend timeline's MET column: the first
   reproduces the file's own ``DATE-OBS``/``DATE-END`` exactly, the second
   misses the timeline's own UTC column by exactly 37.000 s on all 505 rows.
-  The minimal reproduction of the README caveat *Timeline UTC column is 37
-  seconds off its own MET column*. Uses no GDT package at all -- only
+  The minimal reproduction of the README caveat *The archive's MET epoch is
+  stated wrong by 37 seconds*. Uses no GDT package at all -- only
   ``astropy`` and the standard library -- so it can be run without
   installing this plugin.
 
