@@ -54,9 +54,14 @@ light curve, individually and summed across detectors, against GBM's own
 uses adaptive rather than fixed time binning); confirming which of
 BurstCube's 3 reconstructed attitude epochs actually covers the trigger and
 using it to get the response; a background fit excluding GBM's T90 plus a
-10 s buffer; and a joint 4-detector power-law spectral fit. The result is a
-clean non-detection and a 90% upper limit -- not a burst BurstCube saw, but
-a fully worked, honestly reported analysis of the case where it did not.
+10 s buffer; and a joint 4-detector power-law spectral fit. **BurstCube
+detected this burst**, at 13 sigma combined. It also does double duty as the
+evidence behind the README's *The archive's MET epoch is stated wrong by 37
+seconds* caveat: a burst timed independently by another spacecraft is the
+one thing that can check BurstCube's clock from outside, and this one lands
+at the trigger only under the corrected epoch. Along the way it has to find
+and exclude a single-detector phosphorescence event sitting in the
+background window.
 
 ----
 

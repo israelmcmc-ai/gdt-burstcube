@@ -67,7 +67,7 @@ Initial package foundation.
   channels that carry no counts -- e.g. below a detector's energy
   threshold -- before a spectral fit.
 - Added `examples/timeline_utc_vs_met.py`, the minimal reproduction of the
-  *Timeline UTC column is 37 seconds off its own MET column* caveat. It
+  *The archive's MET epoch is stated wrong by 37 seconds* caveat. It
   derives the epoch from a CBD file's own `MJDREFI`/`MJDREFF`/`TIMESYS`
   keywords, reproduces that file's `DATE-OBS`/`DATE-END` exactly, and then
   misses the trend timeline's own UTC column by exactly 37.000 s on all 505
@@ -80,9 +80,9 @@ Initial package foundation.
   flat 0.500 s. Like `timeline_utc_vs_met.py` it uses no GDT package.
 - Added notebook 4, a worked joint BurstCube/GBM analysis of GRB 240629A:
   trigger discovery via GBM's own catalogs (`astro-gdt-fermi`), a light
-  curve overlay, attitude/response, background fitting, and a spectral fit
-  -- a clean non-detection with a 90% upper limit, about 27x below GBM's
-  own fluence-averaged energy flux.
+  curve overlay, attitude/response, background fitting, and a spectral fit.
+  BurstCube detects the burst at 13 sigma combined across its 4 detectors,
+  and the fit converges on a power law of index -1.855 (-0.207/+0.158).
 - **Corrected the BurstCube MET epoch.** Every archive FITS file's
   `MJDREFI`/`MJDREFF`/`TIMESYS` state an epoch of 2021-01-01 00:00:00 UTC;
   the true epoch is 2021-01-01 00:00:00 **TAI**, 37.000 s earlier, confirmed
@@ -108,3 +108,13 @@ Initial package foundation.
   non-UTC-scale `Time` can give the wrong calendar day within the TAI-UTC
   offset of a UTC midnight -- discovered while adding an edge-case test for
   the epoch correction above.
+- Re-executed all four notebooks against the corrected MET epoch. Notebook 4
+  inverts with it: what read as a non-detection with an upper limit was the
+  ON window sitting 34 s away from the burst, and it is now a 13 sigma
+  detection with a converged spectral fit. Its background step also has to
+  find and exclude a single-detector, single-bin phosphorescence event,
+  located from the one-detector-only signature rather than hardcoded.
+- Fixed notebook 2, which had been committed with stale outputs and a dead
+  `from ...response import nside, num_pixels` since those wrappers were
+  removed; it now reads the grid geometry from `caldb.response_grid()` at
+  the point of use. Re-running it was what surfaced this.
